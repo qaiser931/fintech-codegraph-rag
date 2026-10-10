@@ -1,0 +1,774 @@
+[
+  {
+    "id": "Q01",
+    "question": "Why does the JazzCash payment callback handler throw a timeout error during peak traffic?",
+    "expected_symbols": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback",
+      "data/sample_codebase/auth/webhook_verification.py::verify_webhook_signature",
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "expected_files": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py",
+      "data/sample_codebase/auth/webhook_verification.py",
+      "data/sample_codebase/services/payment_service.py",
+      "data/sample_codebase/db/repository.py",
+      "data/sample_codebase/integrations/onelink_client.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback",
+      "data/sample_codebase/auth/webhook_verification.py::verify_webhook_signature",
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "The callback handler verifies the webhook signature before processing the payment.",
+      "process_jazzcash_callback acquires an exclusive merchant account row lock.",
+      "The 1LINK verification call executes while the database row lock is still held.",
+      "Peak 1LINK latency can keep the lock held long enough for concurrent callbacks to hit the database lock timeout.",
+      "The resulting request can exceed the API gateway timeout and return HTTP 504."
+    ]
+  },
+  {
+    "id": "Q02",
+    "question": "Which function handles the inbound JazzCash callback request?",
+    "expected_symbols": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback"
+    ],
+    "expected_files": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback"
+    ],
+    "answer_facts": [
+      "handle_jazzcash_callback is the inbound JazzCash webhook endpoint."
+    ]
+  },
+  {
+    "id": "Q03",
+    "question": "Which function verifies the JazzCash webhook signature?",
+    "expected_symbols": [
+      "data/sample_codebase/auth/webhook_verification.py::verify_webhook_signature"
+    ],
+    "expected_files": [
+      "data/sample_codebase/auth/webhook_verification.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback",
+      "data/sample_codebase/auth/webhook_verification.py::verify_webhook_signature"
+    ],
+    "answer_facts": [
+      "The callback route calls verify_webhook_signature to validate the inbound webhook."
+    ]
+  },
+  {
+    "id": "Q04",
+    "question": "Which service method processes the verified JazzCash callback?",
+    "expected_symbols": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback"
+    ],
+    "expected_files": [
+      "data/sample_codebase/services/payment_service.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback",
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback"
+    ],
+    "answer_facts": [
+      "PaymentService.process_jazzcash_callback processes the normalized JazzCash callback."
+    ]
+  },
+  {
+    "id": "Q05",
+    "question": "Which repository method acquires the merchant account row lock?",
+    "expected_symbols": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "expected_files": [
+      "data/sample_codebase/db/repository.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "answer_facts": [
+      "PaymentRepository.acquire_account_lock acquires an exclusive row-level lock on the merchant account."
+    ]
+  },
+  {
+    "id": "Q06",
+    "question": "Which 1LINK method is called during JazzCash callback processing?",
+    "expected_symbols": [
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "expected_files": [
+      "data/sample_codebase/integrations/onelink_client.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "The callback processing service calls verify_switch_transaction on the 1LINK client."
+    ]
+  },
+  {
+    "id": "Q07",
+    "question": "What database lock is responsible for blocking concurrent JazzCash callbacks?",
+    "expected_symbols": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "expected_files": [
+      "data/sample_codebase/db/repository.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "answer_facts": [
+      "The merchant account row is locked exclusively using the acquire_account_lock repository method."
+    ]
+  },
+  {
+    "id": "Q08",
+    "question": "Why do concurrent callbacks for the same merchant block each other?",
+    "expected_symbols": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback"
+    ],
+    "expected_files": [
+      "data/sample_codebase/db/repository.py",
+      "data/sample_codebase/services/payment_service.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "answer_facts": [
+      "The merchant account row lock remains active until the surrounding transaction commits or rolls back.",
+      "Concurrent callbacks attempting the same merchant lock must wait."
+    ]
+  },
+  {
+    "id": "Q09",
+    "question": "Which external network call runs while the merchant account lock is held?",
+    "expected_symbols": [
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "expected_files": [
+      "data/sample_codebase/integrations/onelink_client.py",
+      "data/sample_codebase/db/repository.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "verify_switch_transaction performs the external 1LINK network request after the account lock has been acquired."
+    ]
+  },
+  {
+    "id": "Q10",
+    "question": "What happens to the account row lock while the 1LINK request is running?",
+    "expected_symbols": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "expected_files": [
+      "data/sample_codebase/db/repository.py",
+      "data/sample_codebase/integrations/onelink_client.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "The lock remains held because the external call occurs inside the active database transaction."
+    ]
+  },
+  {
+    "id": "Q11",
+    "question": "What is the expected 1LINK latency during peak traffic?",
+    "expected_symbols": [
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "expected_files": [
+      "data/sample_codebase/integrations/onelink_client.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "The documented peak latency for the 1LINK verification request fluctuates between about 2 and 6 seconds."
+    ]
+  },
+  {
+    "id": "Q12",
+    "question": "What database timeout can occur when concurrent callbacks wait for the merchant account lock?",
+    "expected_symbols": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/config/settings.py::DatabaseConfig"
+    ],
+    "expected_files": [
+      "data/sample_codebase/db/repository.py",
+      "data/sample_codebase/config/settings.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "answer_facts": [
+      "The database configuration documents a lock timeout of 5000 milliseconds.",
+      "Waiting callbacks can fail when the lock wait exceeds that timeout."
+    ]
+  },
+  {
+    "id": "Q13",
+    "question": "What exception is associated with the database lock timeout?",
+    "expected_symbols": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback"
+    ],
+    "expected_files": [
+      "data/sample_codebase/db/repository.py",
+      "data/sample_codebase/api/routes/jazzcash_callback.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback"
+    ],
+    "answer_facts": [
+      "The incident documentation identifies LockNotAvailable as the database lock-timeout failure."
+    ]
+  },
+  {
+    "id": "Q14",
+    "question": "What HTTP status can the JazzCash callback endpoint return when transaction processing times out?",
+    "expected_symbols": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback"
+    ],
+    "expected_files": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback"
+    ],
+    "answer_facts": [
+      "The callback route converts transaction-processing exceptions into an HTTP 504 response."
+    ]
+  },
+  {
+    "id": "Q15",
+    "question": "What upstream timeout is documented for the ingress API gateway?",
+    "expected_symbols": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback"
+    ],
+    "expected_files": [
+      "data/sample_codebase/services/payment_service.py",
+      "data/sample_codebase/api/routes/jazzcash_callback.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback",
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback"
+    ],
+    "answer_facts": [
+      "The incident documentation states that the FastAPI/Nginx ingress timeout is 8.0 seconds."
+    ]
+  },
+  {
+    "id": "Q16",
+    "question": "Which function saves the transaction after the 1LINK response?",
+    "expected_symbols": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.save_transaction",
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback"
+    ],
+    "expected_files": [
+      "data/sample_codebase/db/repository.py",
+      "data/sample_codebase/services/payment_service.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.save_transaction"
+    ],
+    "answer_facts": [
+      "process_jazzcash_callback saves the transaction record after determining the switch response status."
+    ]
+  },
+  {
+    "id": "Q17",
+    "question": "Which class owns the merchant account locking method?",
+    "expected_symbols": [
+      "data/sample_codebase/db/repository.py::PaymentRepository",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "expected_files": [
+      "data/sample_codebase/db/repository.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "answer_facts": [
+      "PaymentRepository owns acquire_account_lock."
+    ]
+  },
+  {
+    "id": "Q18",
+    "question": "Which class owns the 1LINK verification method?",
+    "expected_symbols": [
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "expected_files": [
+      "data/sample_codebase/integrations/onelink_client.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "OneLinkSwitchClient owns verify_switch_transaction."
+    ]
+  },
+  {
+    "id": "Q19",
+    "question": "Which method is the root cause of holding the database lock during an external call?",
+    "expected_symbols": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "expected_files": [
+      "data/sample_codebase/services/payment_service.py",
+      "data/sample_codebase/db/repository.py",
+      "data/sample_codebase/integrations/onelink_client.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "process_jazzcash_callback acquires the account lock and then calls the external 1LINK verification before the transaction is released."
+    ]
+  },
+  {
+    "id": "Q20",
+    "question": "Which component performs the external 1LINK authorization inquiry?",
+    "expected_symbols": [
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "expected_files": [
+      "data/sample_codebase/integrations/onelink_client.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "OneLinkSwitchClient.verify_switch_transaction performs the real-time 1LINK authorization inquiry."
+    ]
+  },
+  {
+    "id": "Q21",
+    "question": "What is the relationship between process_jazzcash_callback and acquire_account_lock?",
+    "expected_symbols": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "expected_files": [
+      "data/sample_codebase/services/payment_service.py",
+      "data/sample_codebase/db/repository.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "answer_facts": [
+      "process_jazzcash_callback calls acquire_account_lock inside its database transaction."
+    ]
+  },
+  {
+    "id": "Q22",
+    "question": "What is the relationship between acquire_account_lock and verify_switch_transaction?",
+    "expected_symbols": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "expected_files": [
+      "data/sample_codebase/db/repository.py",
+      "data/sample_codebase/integrations/onelink_client.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "The account lock is acquired before verify_switch_transaction is called."
+    ]
+  },
+  {
+    "id": "Q23",
+    "question": "Which component validates the inbound webhook before payment processing?",
+    "expected_symbols": [
+      "data/sample_codebase/auth/webhook_verification.py::verify_webhook_signature",
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback"
+    ],
+    "expected_files": [
+      "data/sample_codebase/auth/webhook_verification.py",
+      "data/sample_codebase/api/routes/jazzcash_callback.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback",
+      "data/sample_codebase/auth/webhook_verification.py::verify_webhook_signature"
+    ],
+    "answer_facts": [
+      "The route validates the webhook signature before invoking the payment service."
+    ]
+  },
+  {
+    "id": "Q24",
+    "question": "Which file contains the JazzCash callback route?",
+    "expected_symbols": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback"
+    ],
+    "expected_files": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback"
+    ],
+    "answer_facts": [
+      "The JazzCash callback endpoint is implemented in jazzcash_callback.py."
+    ]
+  },
+  {
+    "id": "Q25",
+    "question": "Which file contains the payment callback processing service?",
+    "expected_symbols": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback"
+    ],
+    "expected_files": [
+      "data/sample_codebase/services/payment_service.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback"
+    ],
+    "answer_facts": [
+      "PaymentService.process_jazzcash_callback is implemented in payment_service.py."
+    ]
+  },
+  {
+    "id": "Q26",
+    "question": "Which file contains the merchant account lock implementation?",
+    "expected_symbols": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "expected_files": [
+      "data/sample_codebase/db/repository.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "answer_facts": [
+      "The merchant account lock is implemented in db/repository.py."
+    ]
+  },
+  {
+    "id": "Q27",
+    "question": "Which file contains the 1LINK verification implementation?",
+    "expected_symbols": [
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "expected_files": [
+      "data/sample_codebase/integrations/onelink_client.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "The 1LINK verification implementation is in integrations/onelink_client.py."
+    ]
+  },
+  {
+    "id": "Q28",
+    "question": "What architectural mistake causes the lock contention?",
+    "expected_symbols": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "expected_files": [
+      "data/sample_codebase/services/payment_service.py",
+      "data/sample_codebase/db/repository.py",
+      "data/sample_codebase/integrations/onelink_client.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "A synchronous external network request is made while a database row lock is still held."
+    ]
+  },
+  {
+    "id": "Q29",
+    "question": "Why does higher 1LINK latency increase database lock contention?",
+    "expected_symbols": [
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "expected_files": [
+      "data/sample_codebase/integrations/onelink_client.py",
+      "data/sample_codebase/db/repository.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "Longer 1LINK request latency extends the duration for which the merchant account lock is held."
+    ]
+  },
+  {
+    "id": "Q30",
+    "question": "Why can peak traffic produce HTTP 504 responses?",
+    "expected_symbols": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback",
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "expected_files": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py",
+      "data/sample_codebase/services/payment_service.py",
+      "data/sample_codebase/db/repository.py",
+      "data/sample_codebase/integrations/onelink_client.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback",
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "Peak traffic increases concurrent lock waiters.",
+      "The lock is held during the slow 1LINK request.",
+      "Lock timeout and upstream request timeout can result in HTTP 504."
+    ]
+  },
+  {
+    "id": "Q31",
+    "question": "Trace the call path from the JazzCash callback route to the slow 1LINK call.",
+    "expected_symbols": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback",
+      "data/sample_codebase/auth/webhook_verification.py::verify_webhook_signature",
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "expected_files": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py",
+      "data/sample_codebase/auth/webhook_verification.py",
+      "data/sample_codebase/services/payment_service.py",
+      "data/sample_codebase/db/repository.py",
+      "data/sample_codebase/integrations/onelink_client.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback",
+      "data/sample_codebase/auth/webhook_verification.py::verify_webhook_signature",
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "The route validates the webhook.",
+      "The payment service acquires the merchant account lock.",
+      "The service then invokes the slow 1LINK verification call while the lock remains active."
+    ]
+  },
+  {
+    "id": "Q32",
+    "question": "Which function should be inspected first when investigating the JazzCash callback timeout?",
+    "expected_symbols": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "expected_files": [
+      "data/sample_codebase/services/payment_service.py",
+      "data/sample_codebase/db/repository.py",
+      "data/sample_codebase/integrations/onelink_client.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "The critical interaction is inside process_jazzcash_callback where the account lock is followed by the external 1LINK call."
+    ]
+  },
+  {
+    "id": "Q33",
+    "question": "Which method documents that the account lock remains active until transaction commit or rollback?",
+    "expected_symbols": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "expected_files": [
+      "data/sample_codebase/db/repository.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "answer_facts": [
+      "The acquire_account_lock documentation states that the lock remains active until the enclosing session commits or rolls back."
+    ]
+  },
+  {
+    "id": "Q34",
+    "question": "What SQL locking behavior is represented by acquire_account_lock?",
+    "expected_symbols": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "expected_files": [
+      "data/sample_codebase/db/repository.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "answer_facts": [
+      "The method documents SQL equivalent to SELECT from accounts with FOR UPDATE."
+    ]
+  },
+  {
+    "id": "Q35",
+    "question": "Which 1LINK method has retry behavior in the callback path?",
+    "expected_symbols": [
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "expected_files": [
+      "data/sample_codebase/integrations/onelink_client.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "verify_switch_transaction is decorated with retry_on_exception and configured for up to three retries."
+    ]
+  },
+  {
+    "id": "Q36",
+    "question": "How can retries amplify the callback latency problem?",
+    "expected_symbols": [
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction",
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock"
+    ],
+    "expected_files": [
+      "data/sample_codebase/integrations/onelink_client.py",
+      "data/sample_codebase/services/payment_service.py",
+      "data/sample_codebase/db/repository.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "Retries can cause multiple external attempts.",
+      "Because the call occurs while the database lock is held, additional attempts can extend lock-holding time."
+    ]
+  },
+  {
+    "id": "Q37",
+    "question": "Which route converts payment-processing exceptions into a timeout response?",
+    "expected_symbols": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback"
+    ],
+    "expected_files": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback"
+    ],
+    "answer_facts": [
+      "handle_jazzcash_callback catches processing exceptions and raises HTTP 504."
+    ]
+  },
+  {
+    "id": "Q38",
+    "question": "Which component contains the documented root-cause description of the production timeout incident?",
+    "expected_symbols": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback"
+    ],
+    "expected_files": [
+      "data/sample_codebase/services/payment_service.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback"
+    ],
+    "answer_facts": [
+      "payment_service.py documents the planted production root cause and execution trace."
+    ]
+  },
+  {
+    "id": "Q39",
+    "question": "Which sequence directly creates the database-lock-plus-network-call problem?",
+    "expected_symbols": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "expected_files": [
+      "data/sample_codebase/services/payment_service.py",
+      "data/sample_codebase/db/repository.py",
+      "data/sample_codebase/integrations/onelink_client.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "The service acquires the account row lock and then makes the synchronous 1LINK network request before releasing the transaction."
+    ]
+  },
+  {
+    "id": "Q40",
+    "question": "Give the complete root-cause call path for the JazzCash peak-traffic timeout incident.",
+    "expected_symbols": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback",
+      "data/sample_codebase/auth/webhook_verification.py::verify_webhook_signature",
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "expected_files": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py",
+      "data/sample_codebase/auth/webhook_verification.py",
+      "data/sample_codebase/services/payment_service.py",
+      "data/sample_codebase/db/repository.py",
+      "data/sample_codebase/integrations/onelink_client.py"
+    ],
+    "expected_call_path": [
+      "data/sample_codebase/api/routes/jazzcash_callback.py::handle_jazzcash_callback",
+      "data/sample_codebase/auth/webhook_verification.py::verify_webhook_signature",
+      "data/sample_codebase/services/payment_service.py::PaymentService.process_jazzcash_callback",
+      "data/sample_codebase/db/repository.py::PaymentRepository.acquire_account_lock",
+      "data/sample_codebase/integrations/onelink_client.py::OneLinkSwitchClient.verify_switch_transaction"
+    ],
+    "answer_facts": [
+      "The callback route receives the webhook.",
+      "The webhook signature is verified.",
+      "The payment service opens the database transaction and acquires the merchant account lock.",
+      "The service calls the 1LINK verification endpoint while the lock is still held.",
+      "Peak latency and concurrent callbacks cause lock contention and lock timeout.",
+      "The resulting processing failure can surface as HTTP 504."
+    ]
+  }
+]

@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+telemetry_logs/
+data/vector_store/
+data/graph_index/
+data/bm25_index/
+.env.*
+!.env.example
+.streamlit/secrets.toml
