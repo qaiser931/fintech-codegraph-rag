@@ -271,7 +271,17 @@ citation score is zero; source-link accessibility does not establish claim groun
 Answer-quality proxy scoring in `src/evaluation/llm_evaluation.py` is not a verified
 Ragas/DeepEval judge run. Its optional legacy DeepEval branch maps answer relevancy
 to answer correctness; that branch must not be cited as a valid correctness benchmark.
-No model-based faithfulness, correctness or hallucination scores are claimed here.
+A separate Q01 DeepEval 4.2.8 diagnostic completed on 2026-10-11 using
+the local `llama3.2:3b` judge: Faithfulness 1.0000, Answer Relevancy 0.3333,
+and Reference Correctness 0.6000 (threshold 0.70).
+Faithfulness uses a custom extraction prompt and schema capped at 20 facts
+**total** across the unchanged retrieved context. It is a limited-evidence
+single-case diagnostic; the earlier per-document extraction failed from
+timeouts/output truncation. Only Faithfulness passed. The local judge has
+not been human validated; this does not establish complete answer
+correctness or a newly completed 40-question benchmark. Metric evidence:
+[Q01 diagnostic](data/evaluation/q01_deepeval_diagnostic.json).
+No model-based hallucination score is claimed.
 
 Chroma applies role clearance inside its query. BM25 returns only authorized
 candidates but retains a shared server-side corpus in memory; physical per-role

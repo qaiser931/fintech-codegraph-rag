@@ -82,5 +82,3 @@ class CodebaseIndexer:
         self.bm25_index.load_index(settings.bm25_store_path)
         self.vector_index.load_index(settings.vector_db_path)
         self.chunks = self.bm25_index.chunks
-
-
