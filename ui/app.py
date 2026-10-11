@@ -69,7 +69,7 @@ with st.sidebar:
     html('<div class="cg-eyebrow">Access &amp; workspace</div>')
     role = st.selectbox("Access Role", ["Junior Dev", "Senior Dev", "Security Lead"],
                         help="Choose the permissions used to retrieve and open sample code.")
-    st.caption("Demo roles illustrate access to synthetic payment code.")
+    st.caption("Role-based access to the sample codebase.")
     with st.expander("Connection settings", expanded=False):
         if PUBLIC_DEMO:
             # The public target is server-owned: visitors cannot choose where role tokens go.
@@ -97,48 +97,53 @@ with st.sidebar:
     health_label = {"healthy": "API responded healthy", "unavailable": "API unavailable or not healthy",
                     "unchecked": "API connection not checked"}[health]
     html(f'<div class="cg-state"><span class="cg-dot {health}"></span>{health_label}</div>')
-    st.caption("Status reflects the last manual check.")
+    st.caption("Last manual check · not a live monitor")
     st.divider()
-    html('<div class="cg-eyebrow">How it works</div>')
-    st.markdown("**01 · Explore**  \nFind relevant symbols and code.")
-    st.markdown("**02 · Follow the path**  \nInspect the returned call sequence.")
-    st.markdown("**03 · Verify**  \nOpen source before drawing conclusions.")
-    st.divider()
-    st.caption("JazzCash · 1LINK · EasyPaisa\n\nSynthetic integration examples")
+    html('<div class="cg-sidebar-note"><b>Evidence before conclusions</b>'
+         '<p>Explore the code, follow the path, then open the source to verify.</p></div>')
+    st.caption("Project 10 · Synthetic payment code")
 
-html('<section class="cg-hero"><div class="cg-eyebrow">PROJECT 10 / CODE INTELLIGENCE</div>'
-     '<h1>Understand your<br>payment code.</h1>'
-     '<p>Explore relevant code, follow call paths, and inspect the source behind every answer.</p>'
-     '<div class="cg-pills"><span class="cg-pill">Hybrid code search</span>'
-     '<span class="cg-pill">Graph exploration</span>'
-     f'<span class="cg-pill">{escape(role)}</span></div></section>')
+html('<header class="cg-page-header"><div><div class="cg-eyebrow">WORKSPACE / PAYMENT INTEGRATIONS</div>'
+     '<h1>Code intelligence workspace</h1><p>Find the code. Follow the flow. Verify the evidence.</p></div>'
+     f'<span class="cg-workspace-tag">{escape(role)}</span></header>')
 
-with st.container(border=True):
-    html('<div class="cg-eyebrow">Investigation</div>')
-    st.subheader("Ask about the codebase")
-    mode = st.radio("Mode", ["Explore code", "Generate answer"], horizontal=True)
-    exploring = mode == "Explore code"
-    if exploring:
-        st.caption("Find code and call paths without waiting for an AI-generated answer.")
-    else:
-        st.caption("Generate an answer from retrieved evidence. The local model may take longer to respond.")
-    result_scope = (api_url.rstrip("/"), role, mode)
-    if st.session_state.get("result_scope") != result_scope:
-        clear_results()
-        st.session_state["result_scope"] = result_scope
-    st.caption("Try a sample question")
-    for column, label in zip(st.columns(3), EXAMPLES):
-        column.button(label, on_click=choose_example, args=(label,), use_container_width=True)
-    if "query_text" not in st.session_state:
-        st.session_state["query_text"] = EXAMPLES["JazzCash callback"]
-    query = st.text_area("Question", key="query_text", height=110, max_chars=2000,
-                         placeholder="Ask about a function, payment flow, or error...", on_change=clear_results)
-    with st.expander("Add a stack trace (optional)"):
-        stack_trace = st.text_area("Stack trace (optional)", key="stack_trace_text", height=150,
-                                   max_chars=8000, placeholder="Paste an error trace to narrow the search...",
-                                   on_change=clear_results)
-    analyze = st.button("🔍 Explore code" if exploring else "🚀 Generate answer",
-                        type="primary", use_container_width=True)
+editor, starters = st.columns([2.15, 1], gap="large")
+with editor:
+    with st.container(border=True):
+        html('<div class="cg-panel-heading"><span class="cg-section-number">01</span>'
+             '<div><h2>Start an investigation</h2><p>A function, payment flow, or error.</p></div></div>')
+        mode = st.radio("Mode", ["Explore code", "Generate answer"], horizontal=True, label_visibility="collapsed")
+        exploring = mode == "Explore code"
+        result_scope = (api_url.rstrip("/"), role, mode)
+        if st.session_state.get("result_scope") != result_scope:
+            clear_results()
+            st.session_state["result_scope"] = result_scope
+        if "query_text" not in st.session_state:
+            st.session_state["query_text"] = EXAMPLES["JazzCash callback"]
+        query = st.text_area("Question", key="query_text", height=120, max_chars=2000,
+                             placeholder="Ask about a function, payment flow, or error...", on_change=clear_results)
+        with st.expander("Add a stack trace (optional)"):
+            stack_trace = st.text_area("Stack trace (optional)", key="stack_trace_text", height=150,
+                                       max_chars=8000, placeholder="Paste an error trace to narrow the search...",
+                                       on_change=clear_results)
+        analyze = st.button("🔍 Explore code" if exploring else "🚀 Generate answer",
+                            type="primary", use_container_width=True)
+        st.caption("Code search only · no answer generation" if exploring else
+                   "Evidence-based answer · local generation may take longer")
+with starters:
+    with st.container(border=True):
+        html('<div class="cg-eyebrow">STARTER INVESTIGATIONS</div>')
+        descriptions = {
+            "JazzCash callback": ("JC", "Debug a payment timeout", "Trace the callback during peak traffic."),
+            "Webhook verification": ("WH", "Inspect signature verification", "Locate the webhook security check."),
+            "1LINK latency": ("1L", "Explore network latency", "Find the expected peak-traffic delay."),
+        }
+        for label, (icon, title, description) in descriptions.items():
+            html(f'<div class="cg-starter"><span class="cg-starter-icon">{icon}</span>'
+                 f'<div><b>{title}</b><p>{description}</p></div></div>')
+            st.button(label, on_click=choose_example, args=(label,), use_container_width=True)
+    html('<div class="cg-provider-strip"><span>DEMO CODEBASE</span>'
+         '<b>JazzCash <i>·</i> 1LINK <i>·</i> EasyPaisa</b></div>')
 
 if analyze:
     clear_results()
@@ -256,9 +261,7 @@ if result:
             if not retrieved_items:
                 st.caption("No retrieved items were returned.")
 else:
-    html('<section class="cg-empty"><h3>Your investigation starts here.</h3>'
-         '<p>Choose a sample question or ask your own. Explore first, then generate an answer when you need one.</p>'
-         '<div class="cg-steps"><div class="cg-step"><b>01 / Find the code</b><span>Search symbols and related snippets.</span></div>'
-         '<div class="cg-step"><b>02 / Follow the flow</b><span>Inspect the returned call sequence.</span></div>'
-         '<div class="cg-step"><b>03 / Check the source</b><span>Verify the evidence behind the result.</span></div></div></section>')
-html('<div class="cg-footer">CodeGraph RAG · Project 10 · Synthetic Pakistani payment integrations</div>')
+    html('<section class="cg-empty"><span class="cg-empty-icon">&lt;/&gt;</span><div>'
+         '<h3>Your evidence will appear here</h3><p>Run an investigation to see source references, the call path, and code matches.</p>'
+         '</div><span class="cg-empty-tag">READY FOR A QUESTION</span></section>')
+html('<div class="cg-footer"><span>CodeGraph RAG · Project 10</span><span>Synthetic code · Verify evidence before relying on an answer</span></div>')
