@@ -52,3 +52,7 @@ logs/
 .env.*
 !.env.example
 .streamlit/secrets.toml
+
+# Keep Next.js source libraries in Git
+!/frontend/lib/
+!/frontend/lib/server/
