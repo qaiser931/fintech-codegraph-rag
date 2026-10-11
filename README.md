@@ -251,7 +251,7 @@ flowchart TD
 ```
 
 The generator supports configured Ollama, OpenAI, Gemini or Groq providers.
-The deployed demonstration uses Ollama with `qwen2.5:1.5b`. Dense embeddings
+The current generator profile uses Groq-hosted `openai/gpt-oss-120b`. Dense embeddings
 use BGE; lexical matching uses BM25; a cross-encoder reranks fused candidates.
 Graph traversal preserves available call-order metadata and filters paths by role.
 
@@ -307,11 +307,26 @@ a production login system. Use this sharing workflow only for this sample-code d
 the UI-only patch, restarts only an ownership-verified project UI, and downloads
 the official Windows Cloudflare executable into a fresh ignored telemetry folder.
 It prints a real temporary HTTPS URL without publishing API port 8001 or Ollama.
-The laptop, API, Ollama, UI and tunnel process must remain running for generation
-and sharing to work. Ctrl+C stops only the tunnel this helper started.
+The laptop, API, UI and tunnel process must remain running for sharing; Groq
+generation also requires internet access and a valid server-side API key. Ctrl+C stops only the tunnel this helper started.
 
 A GitHub repository stores source; GitHub Pages cannot run this Python API/UI stack.
 Permanent independent hosting needs a server/container environment for FastAPI,
 Streamlit, indices/models, and an accessible LLM provider. A cloud-hosted UI cannot
 reach your laptop's `127.0.0.1:8001` address. See `docs/ONLINE_DEMO.md` for the
 sharing commands and the limitations of the temporary URL.
+
+## Groq cloud generation
+
+The Windows demo can use Groq to move LLM inference off the laptop. Code parsing,
+embeddings, reranking and graph retrieval still run locally. The integration uses
+a fixed official HTTPS endpoint, a 5-second connect wait, a 90-second provider
+read wait, no automatic retry, and a 2048-token completion budget. Length-cut
+answers are rejected in favor of the conservative evidence assessment.
+
+API credentials belong only in the ignored local .env. Questions and retrieved
+code snippets are sent to Groq; the demonstration corpus is synthetic. Free-plan
+quotas can reject requests with HTTP 429. Estimated cost uses published model
+list prices and is not an invoice or evidence of paid/free account status.
+See [Groq setup](docs/GROQ_SETUP.md). The historical Ollama Q01 diagnostic is
+retained; it does not evaluate the new Groq generator.

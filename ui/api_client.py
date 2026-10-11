@@ -80,6 +80,28 @@ def describe_query_error(exc: Exception) -> tuple[str, str]:
             return "error", (
                 "Access denied (HTTP 403). Check the selected role and its credentials."
             )
+        if code == 429:
+            return "warning", (
+                "Cloud generation rate limit reached (HTTP 429). Wait before "
+                "trying again, or use Explore code to inspect the evidence. "
+                "No automatic retry was made."
+            )
+        if code == 504:
+            return "warning", (
+                "Answer generation timed out (HTTP 504). Check the provider "
+                "connection, or use Explore code to inspect the evidence. "
+                "No automatic retry was made."
+            )
+        if code == 503:
+            try:
+                detail = exc.response.json().get("detail")
+            except (ValueError, AttributeError):
+                detail = None
+            if detail == "Cloud generation credentials were rejected.":
+                return "error", (
+                    "The cloud provider rejected its API credentials (HTTP 503). "
+                    "Check the server-side Groq key and model permissions."
+                )
         if code is not None and code >= 500:
             return "error", (
                 f"The backend failed (HTTP {code}). Check the API logs."

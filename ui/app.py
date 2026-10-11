@@ -181,7 +181,7 @@ if result:
         cols = st.columns(3)
         cols[0].metric("Retrieval latency", f"{result.get('latency_ms', 0):.1f} ms")
         cols[1].metric("Code matches", len(retrieved_items))
-        cols[2].metric("Call paths", 1 if call_path else 0)
+        cols[2].metric("Call paths", len(call_path))
         st.caption(f"Access role: {result.get('role', role)} · Retrieved evidence to inspect; no answer generated.")
     else:
         with st.container(border=True):
@@ -200,7 +200,8 @@ if result:
             cols[1].metric("Prompt Tokens", result.get("prompt_tokens", 0))
             cols[2].metric("Completion Tokens", result.get("completion_tokens", 0))
             cols[3].metric("Total Tokens", result.get("total_tokens", 0))
-            cols[4].metric("Cost", f"${result.get('cost_usd', 0):.6f}")
+            cols[4].metric("Estimated cost", f"${result.get('cost_usd', 0):.6f}")
+            st.caption("Estimated usage cost; free-tier usage and actual billing depend on the provider account.")
 
     source_tab, path_tab, chunk_tab = st.tabs([f"Sources · {len(citations)}", "Call path", f"Code matches · {len(retrieved_items)}"])
     with source_tab:
@@ -240,7 +241,7 @@ if result:
             st.info("No source matches were returned." if exploring else "No citations were returned. Inspect code with Explore before drawing conclusions.")
     with path_tab:
         st.markdown("### Execution / Call Path")
-        st.caption("Sequence returned by retrieval; inspect the source to verify each step.")
+        st.caption("Each row is a separate execution path; inspect the source to verify its steps.")
         for index, node in enumerate(call_path, start=1):
             html(f'<div class="cg-path"><span class="cg-path-number">{index:02}</span>'
                  f'<code>{escape(format_symbol(node))}</code></div>')

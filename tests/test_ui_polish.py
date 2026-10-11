@@ -18,7 +18,7 @@ def button(at, label):
 def investigation(monkeypatch):
     data = {'role': 'Senior Dev', 'latency_ms': 20, 'sources': [
         {'symbol_name': 'payment', 'file_path': 'services/payment.py', 'start_line': 1}],
-        'call_path': ['callback', 'payment', 'settlement'], 'retrieved_items': []}
+        'call_path': ['callback → payment → settlement'], 'retrieved_items': []}
     retrieve = Mock(return_value=data)
     generate = Mock(return_value=dict(data, answer='Insufficient evidence to conclude.',
                                      status='INSUFFICIENT_EVIDENCE', citations=data['sources']))
@@ -114,3 +114,11 @@ def test_new_html_cards_escape_api_supplied_symbol_and_path(investigation):
     assert '&lt;script&gt;private()&lt;/script&gt;' in custom
     assert '&lt;img src=x onerror=private()&gt;' in custom
     assert '<script>private()' not in custom and '<img src=x' not in custom
+
+
+def test_each_returned_execution_path_is_counted(investigation):
+    at, retrieve, *_ = investigation
+    retrieve.return_value['call_path'].append('verify_signature → validate_payload')
+    button(at, '🔍 Explore code')
+    metric = next(x for x in at.metric if x.label == 'Call paths')
+    assert metric.value == '2'

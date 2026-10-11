@@ -547,47 +547,47 @@ def _call_groq(
     temperature: float,
     api_key: str,
 ) -> tuple[str, int, int]:
-    """Call Groq."""
+    """Call Groq's official endpoint using the existing httpx dependency."""
+    import httpx
+    from src.config import settings
 
-    from groq import Groq  # type: ignore
-
-    client = Groq(
-        api_key=api_key or settings.groq_api_key
-    )
-
-    response = client.chat.completions.create(
-        model=model,
-        temperature=temperature,
-        messages=[
-            {
-                "role": "system",
-                "content": system_prompt,
-            },
-            {
-                "role": "user",
-                "content": user_prompt,
-            },
+    token = (api_key or settings.groq_api_key).strip()
+    if not token:
+        raise ValueError("GROQ_API_KEY is not configured.")
+    payload = {
+        "model": model,
+        "temperature": temperature,
+        "max_completion_tokens": 2048,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
         ],
-    )
-
-    text = response.choices[0].message.content or ""
-
-    usage = response.usage
-
-    pt = (
-        usage.prompt_tokens
-        if usage
-        else 0
-    )
-
-    ct = (
-        usage.completion_tokens
-        if usage
-        else 0
-    )
-
-    return text, pt, ct
-
+    }
+    if model in {"openai/gpt-oss-120b", "openai/gpt-oss-20b"}:
+        payload.update(reasoning_effort="low", include_reasoning=False)
+    # Transport retries are off by default; one call per generation request.
+    with httpx.Client(timeout=httpx.Timeout(90.0, connect=5.0),
+                      follow_redirects=False) as client:
+        response = client.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": "Bearer " + token},
+            json=payload,
+        )
+        response.raise_for_status()
+        data = response.json()
+    choices = data.get("choices") or []
+    if not choices or not isinstance(choices[0], dict):
+        raise RuntimeError("Groq returned no completion.")
+    choice = choices[0]
+    message = choice.get("message") or {}
+    text = message.get("content") or ""
+    if not isinstance(text, str):
+        raise RuntimeError("Groq returned an invalid completion.")
+    # Do not accept a cut answer; the generator must use its evidence fallback.
+    if choice.get("finish_reason") == "length":
+        text = ""
+    usage = data.get("usage") or {}
+    return text, usage.get("prompt_tokens") or 0, usage.get("completion_tokens") or 0
 
 def _call_ollama(
     system_prompt: str,
@@ -801,7 +801,7 @@ class CodeRAGGenerator:
             result,
         )
 
-        if not grounded:
+        if not grounded or not answer_text.strip():
             answer_text = _safe_evidence_fallback(
                 result
             )

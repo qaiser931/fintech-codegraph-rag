@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 import time
+
+import httpx
 import uuid
 from html import escape
 from pathlib import Path
@@ -47,6 +50,7 @@ from src.telemetry import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/retrieve", response_model=RetrievalResponse)
@@ -99,6 +103,13 @@ async def retrieve_code(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _estimate_answer_cost(answer) -> float:
+    if answer.provider == "groq" and answer.model == "openai/gpt-oss-120b":
+        # Groq published list prices checked 2026-10-11. Estimate, not an invoice.
+        return round((answer.prompt_tokens * 0.15 + answer.completion_tokens * 0.60) / 1_000_000, 8)
+    return estimate_cost(answer.model, answer.total_tokens)
+
 
 def _classify_status(answer: str, n_citations: int, n_items: int) -> AnswerStatus:
     """Heuristic answer-confidence classifier.
@@ -246,6 +257,8 @@ def _record_query_metrics(
         422: {"description": "Validation error"},
         503: {"model": ErrorResponse, "description": "Service not ready"},
         500: {"model": ErrorResponse, "description": "Internal server error"},
+        429: {"model": ErrorResponse, "description": "Cloud provider rate limit"},
+        504: {"model": ErrorResponse, "description": "Generation wait expired"},
     },
     summary="Answer a natural-language question about the codebase",
     description=(
@@ -327,6 +340,20 @@ async def query_endpoint(
             effective_query,
             role=effective_role,
         )
+    except httpx.TimeoutException as exc:
+        logger.warning("Generation wait expired: trace_id=%s type=%s", trace_id, type(exc).__name__)
+        raise HTTPException(status_code=504, detail="Generation wait expired.") from exc
+    except httpx.HTTPStatusError as exc:
+        # Only classify responses from the fixed, official Groq destination.
+        if generator.provider == "groq" and exc.request.url.host == "api.groq.com":
+            upstream_status = exc.response.status_code
+            logger.warning("Groq request rejected: trace_id=%s status=%s", trace_id, upstream_status)
+            if upstream_status == 429:
+                raise HTTPException(status_code=429, detail="Cloud generation rate limit reached.") from exc
+            if upstream_status in (401, 403):
+                raise HTTPException(status_code=503, detail="Cloud generation credentials were rejected.") from exc
+            raise HTTPException(status_code=502, detail="Cloud generation request failed.") from exc
+        raise HTTPException(status_code=500, detail="Generation failed: HTTPStatusError") from exc
     except ValueError as exc:
         # Unknown role or validation error from RBAC
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
@@ -353,7 +380,7 @@ async def query_endpoint(
     answer_status = _classify_status(gen_answer.answer, len(citation_items), len(retrieved_items))
 
     latency_ms = round((time.perf_counter() - t_start) * 1000, 2)
-    cost = estimate_cost(gen_answer.model, gen_answer.total_tokens)
+    cost = _estimate_answer_cost(gen_answer)
 
     restricted_doc_ids = {
         item.chunk.doc_id
