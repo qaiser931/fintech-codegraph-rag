@@ -12,3 +12,6 @@ temp_pytest/
 telemetry_logs/
 *.log
 .deepeval/
+
+# Next.js frontend is deployed separately
+frontend/
