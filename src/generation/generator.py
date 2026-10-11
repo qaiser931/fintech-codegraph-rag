@@ -9,7 +9,10 @@ unsupported model output is not returned as if it were grounded evidence.
 
 from __future__ import annotations
 
+import ast
+from decimal import Decimal
 import re
+import textwrap
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, List, Optional, Set
@@ -98,6 +101,50 @@ _NEGATION_CONTRACTIONS = {
     r"\bshouldn['’]t\b": "should not",
 }
 _NEGATION_CUES = {"not", "no", "never", "without", "cannot"}
+_DURATION_PATTERN = re.compile(
+    r"(?<!\w)(\d+(?:\.\d+)?)\s*(milliseconds?|msecs?|ms|seconds?|secs?|s)\b",
+    re.IGNORECASE,
+)
+_SECTION_LABELS = {
+    "direct answer", "answer", "confirmed evidence", "retrieved evidence",
+    "execution path", "execution paths", "execution sequence", "call path",
+    "strongest evidence", "supporting evidence", "evidence", "sources",
+    "reasonable inference", "inference", "missing evidence", "evidence status",
+    "documented source fact",
+}
+_STATUS_LABELS = {"supported", "partially supported", "insufficient evidence", "conflicting evidence"}
+
+
+def _duration_unit(unit: str) -> str:
+    return "milliseconds" if unit.lower().startswith("m") else "seconds"
+
+
+def _duration_values(text: str) -> set[tuple[Decimal, str]]:
+    return {(Decimal(value), _duration_unit(unit)) for value, unit in _DURATION_PATTERN.findall(text)}
+
+
+def _numeric_values(text: str) -> set[Decimal]:
+    return {Decimal(value) for value in re.findall(r"(?<![\w.])\d+(?:\.\d+)?", text)}
+
+
+def _structure_only(text: str) -> bool:
+    """Allow known organizational labels, never arbitrary uncited headings."""
+    label = re.sub(r"^[#>\s]+", "", text).replace("**", "").replace("__", "").strip().rstrip(":").lower()
+    if label in _SECTION_LABELS or label in _STATUS_LABELS:
+        return True
+    return label.startswith("evidence status:") and label.split(":", 1)[1].strip().rstrip(".") in _STATUS_LABELS
+
+
+def _claim_units(answer: str) -> List[str]:
+    pieces: List[str] = []
+    for part in _CLAIM_SPLIT_PATTERN.split(answer):
+        part = re.sub(r"^\s*(?:[-*+]\s+|\d+[.)]\s+)", "", part).strip()
+        # A citation immediately after sentence punctuation belongs to that sentence.
+        if pieces and _CITATION_PATTERN.search(part) and not _CITATION_PATTERN.sub("", part).strip(" .,:;!"):
+            pieces[-1] += " " + part
+        elif part:
+            pieces.append(part)
+    return pieces
 
 
 def _extract_citation_numbers(answer_text: str) -> List[int]:
@@ -174,6 +221,7 @@ def _has_factual_content(answer_text: str) -> bool:
 def _grounding_tokens(text: str) -> List[str]:
     split_identifiers = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", text)
     normalized = split_identifiers.replace("’", "'")
+    normalized = _DURATION_PATTERN.sub(lambda match: match[1] + " " + _duration_unit(match[2]), normalized)
     for pattern, replacement in _NEGATION_CONTRACTIONS.items():
         normalized = re.sub(pattern, replacement, normalized, flags=re.IGNORECASE)
     return re.findall(r"[a-z0-9]+", normalized.lower())
@@ -243,6 +291,11 @@ def _claim_supported_by_citations(
         )
     )
     evidence_terms = _grounding_terms(evidence_text)
+    # Word overlap alone must not bless an invented latency/retry/configuration value.
+    if not _numeric_values(claim).issubset(_numeric_values(evidence_text)):
+        return False
+    if not _duration_values(claim).issubset(_duration_values(evidence_text)):
+        return False
     evidence_forms = {
         form
         for token in evidence_terms
@@ -310,9 +363,11 @@ def _validate_grounding(
     if _has_factual_content(answer_text) and not citations:
         return False, []
 
-    for claim in _CLAIM_SPLIT_PATTERN.split(answer_text):
+    for claim in _claim_units(answer_text):
         claim = claim.strip()
         if not claim:
+            continue
+        if _structure_only(claim):
             continue
 
         citation_numbers = [
@@ -341,6 +396,50 @@ def _validate_grounding(
 # Safe fallback
 # ---------------------------------------------------------------------------
 
+def _documented_latency_fact(result: "RetrievalResult") -> Optional[str]:
+    """Quote a relevant documented duration for a simple value question.
+
+    Values come from retrieved docstrings, not a gold answer or provider facts.
+    A root-cause/measurement question or conflicting quoted ranges stays cautious.
+    """
+    question = result.query.lower()
+    if not re.match(r"\s*(?:what\b|how long\b)", question) or "latency" not in question:
+        return None
+    if re.search(r"\b(?:why|cause|causes|causing|explain|measured|actual|observed)\b", question):
+        return None
+    entities = {name for name in ("1link", "onelink", "jazzcash", "easypaisa") if name in question}
+    terms = _grounding_terms(question)
+    candidates = []
+    for number, item in enumerate(result.items, 1):
+        try:
+            tree = ast.parse(textwrap.dedent(item.chunk.content))
+        except (SyntaxError, ValueError):
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            doc = ast.get_docstring(node)
+            if not doc:
+                continue
+            for paragraph in re.split(r"\n\s*\n", doc):
+                quote = " ".join(paragraph.split())
+                if "latency" not in quote.lower() or not _duration_values(quote):
+                    continue
+                if entities and not any(name in quote.lower() for name in entities):
+                    continue
+                if "peak" in question and "peak" not in quote.lower():
+                    continue
+                if len(terms & _grounding_terms(quote)) < 2:
+                    continue
+                candidates.append((number, item.chunk, quote, _duration_values(quote)))
+    if not candidates or any(candidate[3] != candidates[0][3] for candidate in candidates[1:]):
+        return None
+    number, chunk, quote, _ = candidates[0]
+    return ("## Documented source fact\n\n"
+            f"> {quote} [{number}]\n\n"
+            f"**Source:** `{chunk.symbol_name}` [{number}]\n\n"
+            "Evidence status: Supported")
+
 def _safe_evidence_fallback(
     result: "RetrievalResult",
 ) -> str:
@@ -351,17 +450,21 @@ def _safe_evidence_fallback(
     paths.
     """
 
+    documented_fact = _documented_latency_fact(result)
+    if documented_fact:
+        return documented_fact
     lines: List[str] = []
 
     lines.append(
         "## Evidence-based assessment"
     )
+    question = result.query.replace("[", "\\[").replace("]", "\\]")
+    lines.append("Question: " + question)
 
     lines.append(
-        "The retrieved code provides relevant execution-path evidence, "
-        "but it does not establish the complete cause of the reported "
-        "timeout. Therefore, a definitive root cause cannot be stated "
-        "from the retrieved evidence alone."
+        "The generated explanation could not be verified against the "
+        "retrieved evidence for this question. Inspect the source references "
+        "below for the relevant facts."
     )
 
     # ------------------------------------------------------------------
@@ -423,9 +526,7 @@ def _safe_evidence_fallback(
     lines.append("")
     lines.append("### Evidence status")
     lines.append(
-        "Insufficient evidence: the retrieved code does not establish "
-        "that database connection-pool exhaustion, infrastructure "
-        "behaviour, or another specific timeout mechanism is the root cause."
+        "Insufficient evidence for a verified answer to the requested question."
     )
 
     return "\n".join(lines)

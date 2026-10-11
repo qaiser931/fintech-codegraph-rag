@@ -330,3 +330,18 @@ quotas can reject requests with HTTP 429. Estimated cost uses published model
 list prices and is not an invoice or evidence of paid/free account status.
 See [Groq setup](docs/GROQ_SETUP.md). The historical Ollama Q01 diagnostic is
 retained; it does not evaluate the new Groq generator.
+
+## Documented facts and answer grounding
+
+Organizational headings and the evidence-status label are excluded from factual
+claim checks; the content under them still requires valid supporting citations.
+Numeric values and duration units must occur in the cited source. Grounding
+remains a conservative lexical heuristic, not a model-based correctness score.
+
+For simple documented-latency questions, a rejected generated explanation can
+fall back to an exact relevant docstring quotation from the authorized retrieved
+context. Conflicting quoted ranges and causal or measured-performance questions
+retain the cautious fallback. No gold-dataset answer is used for this extraction.
+The generic fallback describes validation uncertainty about the actual question
+instead of asserting an unrelated timeout or database root cause. One cited
+source can support a complete documented fact with an explicit Supported label.

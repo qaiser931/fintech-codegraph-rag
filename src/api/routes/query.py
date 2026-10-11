@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 
 import httpx
@@ -116,6 +117,8 @@ def _classify_status(answer: str, n_citations: int, n_items: int) -> AnswerStatu
 
     Rules (applied in order):
     - No items retrieved -> INSUFFICIENT_EVIDENCE
+    - Conservative fallback -> INSUFFICIENT_EVIDENCE
+    - Validated explicit status with citations -> that status
     - Answer contains explicit contradiction language -> CONFLICTING_EVIDENCE
     - 2+ grounded citations -> SUPPORTED
     - 1 grounded citation -> PARTIALLY_SUPPORTED
@@ -147,11 +150,28 @@ def _classify_status(answer: str, n_citations: int, n_items: int) -> AnswerStatu
         "limited information",
     ]
 
-    if any(m in answer_lower for m in conflict_markers):
-        return AnswerStatus.CONFLICTING_EVIDENCE
-
     if answer.lstrip().startswith("## Evidence-based assessment"):
         return AnswerStatus.INSUFFICIENT_EVIDENCE
+
+    # One source can fully establish a single documented fact. A validated
+    # explicit status has more meaning than counting duplicate supporting files.
+    plain = answer.replace("**", "").replace("__", "")
+    explicit = re.findall(
+        r"(?im)^\s*(?:#{1,6}\s*)?evidence status\s*:\s*"
+        r"(insufficient evidence|partially supported|supported|conflicting evidence)\s*\.?\s*$",
+        plain,
+    )
+    if explicit and n_citations:
+        labels = {
+            "supported": AnswerStatus.SUPPORTED,
+            "partially supported": AnswerStatus.PARTIALLY_SUPPORTED,
+            "insufficient evidence": AnswerStatus.INSUFFICIENT_EVIDENCE,
+            "conflicting evidence": AnswerStatus.CONFLICTING_EVIDENCE,
+        }
+        return labels[explicit[-1].lower()]
+
+    if any(m in answer_lower for m in conflict_markers):
+        return AnswerStatus.CONFLICTING_EVIDENCE
 
     if n_citations >= 2:
         return AnswerStatus.SUPPORTED

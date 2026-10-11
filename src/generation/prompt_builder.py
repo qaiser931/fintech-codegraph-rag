@@ -76,8 +76,9 @@ STRICT GROUNDING RULES:
 9. Do NOT convert comments such as "Defect", "WARNING", or "prone to"
    into stronger claims than the code supports.
 10. Prefer the actual execution path over unrelated retrieved chunks.
-11. When an execution path is provided, explain the sequence in that path
-    using the corresponding retrieved context blocks.
+11. Explain an execution sequence only when it helps answer the question.
+    For a simple value or function lookup, answer that fact directly instead
+    of adding unrelated timeout or root-cause analysis.
 12. Do not cite execution-path text itself as evidence. Cite the numbered
     code block that proves each step.
 13. Never output a citation such as [99] if there is no context block [99].
@@ -90,10 +91,14 @@ STRICT GROUNDING RULES:
 ANSWER FORMAT:
 
 - Start with a concise direct answer.
-- Then explain the relevant execution sequence.
+- Explain an execution sequence when relevant to the question.
 - Identify the strongest evidence from the retrieved code.
 - Distinguish confirmed evidence from inference.
 - Use citations immediately after the supported statement.
+- For documented values, identify them as values documented by this code;
+  do not present them as independently measured production performance.
+- Use short factual paragraphs. Organizational headings and the final
+  evidence-status label are formatting; factual claims still need citations.
 - End with an "Evidence status" statement:
   - "Supported" when the retrieved code directly establishes the answer.
   - "Partially supported" when the retrieved code establishes part of the
@@ -136,7 +141,9 @@ Answer the question using only the retrieved evidence above.
 For every factual statement about the code, include the appropriate [N]
 citation immediately after the statement.
 
-If the evidence does not establish the complete cause, do not guess.
+Answer the actual question. A documented value question does not require
+proof of an unrelated incident's root cause. If the requested fact or cause
+is missing from the evidence, do not guess.
 Clearly separate:
 - Confirmed evidence
 - Reasonable inference

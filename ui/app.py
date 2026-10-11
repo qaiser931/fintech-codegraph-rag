@@ -129,7 +129,7 @@ with editor:
         analyze = st.button("🔍 Explore code" if exploring else "🚀 Generate answer",
                             type="primary", use_container_width=True)
         st.caption("Code search only · no answer generation" if exploring else
-                   "Evidence-based answer · local generation may take longer")
+                   "Evidence-based answer · open the sources to verify")
 with starters:
     with st.container(border=True):
         html('<div class="cg-eyebrow">STARTER INVESTIGATIONS</div>')
