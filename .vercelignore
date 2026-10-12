@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.research/
+.env
+.env.*
+!.env.example
+.venv*/
+telemetry_logs/
+.pytest_cache/
+**/__pycache__/
+data/vector_store/
+data/graph_index/
+data/bm25_index/
+codegraph_assets/

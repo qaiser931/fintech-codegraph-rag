@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import hmac
 import ipaddress
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from fastapi import Header, HTTPException, Request, status
 from fastapi.security import HTTPBearer
@@ -18,7 +18,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from src.config import settings
 from src.generation.generator import CodeRAGGenerator
-from src.ingestion.indexer import CodebaseIndexer
+if TYPE_CHECKING:
+    from src.ingestion.indexer import CodebaseIndexer
 from src.retrieval.hybrid import HybridRetriever
 from src.security.rbac import rbac_manager
 

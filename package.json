@@ -4,13 +4,14 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "vercel dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/proxy.test.mjs && vitest run"
+    "test": "vitest run",
+    "dev:ui": "next dev"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

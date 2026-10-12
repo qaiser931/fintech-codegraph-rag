@@ -1,5 +1,6 @@
 """Application configuration and settings management."""
 
+import os
 from pathlib import Path
 from typing import Dict, List, Set
 from pydantic import Field
@@ -13,7 +14,7 @@ class Settings(BaseSettings):
     """Global configuration settings for Fintech CodeGraph RAG."""
 
     model_config = SettingsConfigDict(
-        env_file=str(BASE_DIR / ".env"),
+        env_file=None if os.environ.get("CODEGRAPH_SERVERLESS") == "1" else str(BASE_DIR / ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -94,4 +95,5 @@ class Settings(BaseSettings):
 
 # Global singleton settings instance
 settings = Settings()
-settings.ensure_directories()
+if os.environ.get("CODEGRAPH_SERVERLESS") != "1":
+    settings.ensure_directories()

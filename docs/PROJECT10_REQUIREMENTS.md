@@ -49,3 +49,13 @@ Full rubric compliance is not claimed until the pending delivery items and verif
 judge evaluation are completed. Do not manufacture scores to fill the gaps.
 
 Online demo update: the final offline run passed **204 tests** in 5.54 seconds, including public API-target isolation. Four focused helper checks passed for UI ownership and stale-listener rejection. The actual Windows tunnel and external browser result remain unverified until the laptop helper is run.
+
+## Vercel migration (2026-10-12)
+
+The current interface is the root Next.js app, with `/` and `/dashboard`. The
+serverless Python adapter is `api/index.py`. It uses pinned float32 ONNX BGE and
+MiniLM models, a read-only exact-cosine vector index, the existing BM25/RRF/graph
+pipeline and Groq generation. The earlier Chroma/Streamlit/container evidence
+above describes the historical local profile. Vercel cloud publication is pending
+project settings and live verification; no new generated-answer quality score is
+claimed. See `docs/VERCEL.md` and the separate ONNX retrieval report.
