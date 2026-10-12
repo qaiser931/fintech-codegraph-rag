@@ -1,5 +1,21 @@
 # CodeGraph frontend
 
+The public overview is served at `/`; the investigation workspace is at `/dashboard`.
+Both use a shared light visual system with violet accents, a responsive workspace
+sidebar, source inspector and explicit evidence states. The overview's graph and
+code excerpt are illustrative; it makes no backend request or live status claim.
+
+The workspace keeps role selection, Explore, Generate, source references,
+execution paths and manual health checks. New investigation clears the previous
+question, stack trace and evidence. Stop waiting aborts the browser request and
+discards late responses; it does not guarantee cancellation of work already
+submitted to the backend/provider. All API credentials remain server-side.
+
+Check changes with `pnpm run lint`, `pnpm run typecheck`, `pnpm run build`, then
+`pnpm test`. Production proxy tests require the completed build. These tests use
+fixtures and do not send real generation requests. Hosting availability and the
+quality of generated answers require separate live checks.
+
 A Next.js 16 / React 19 investigation dashboard adapted from the supplied v0 application shell. This frontend lives in `frontend/` of the existing Fintech CodeGraph RAG repository; the Python backend stays separate.
 
 ## Local configuration

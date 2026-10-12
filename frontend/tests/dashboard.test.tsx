@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react"
-import Page from "@/app/page"
+import Page from "@/app/dashboard/page"
 
 const citation = {
   doc_id: "fixture-doc",
@@ -173,4 +173,67 @@ test("Source code stays literal text and cannot inject HTML into the UI", async 
   fireEvent.click(screen.getByRole("button", { name: /fixture_symbol/ }))
   await screen.findByText("<script>danger()</script>")
   expect(document.querySelector("script")).toBeNull()
+})
+
+test("Cancelling a request aborts it and discards a late response", async () => {
+  let finish: (data: Response) => void = () => {}
+  fetchMock.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      })
+  )
+  render(<Page />)
+  ask()
+  const signal = fetchMock.mock.calls[0][1].signal
+  fireEvent.click(screen.getByRole("button", { name: "Stop waiting" }))
+  expect(signal.aborted).toBe(true)
+  finish(new Response(JSON.stringify(result)))
+  await waitFor(() =>
+    expect(screen.getByText("Start with a question")).toBeTruthy()
+  )
+  expect(screen.queryByText("Fixture heading")).toBeNull()
+  expect(
+    (
+      screen.getByRole("button", {
+        name: "Generate answer",
+      }) as HTMLButtonElement
+    ).disabled
+  ).toBe(false)
+})
+
+test("New investigation clears the question, stack trace and old answer", async () => {
+  render(<Page />)
+  fireEvent.change(screen.getByLabelText("Stack trace"), {
+    target: { value: "Old exception" },
+  })
+  await showResult()
+  fireEvent.click(screen.getByRole("button", { name: "New investigation" }))
+  expect(
+    (screen.getByLabelText("Investigation question") as HTMLTextAreaElement)
+      .value
+  ).toBe("")
+  expect(
+    (screen.getByLabelText("Stack trace") as HTMLTextAreaElement).value
+  ).toBe("")
+  expect(screen.queryByText("Fixture heading")).toBeNull()
+})
+
+test("Execution path count tracks returned paths rather than symbols in each path", async () => {
+  fetchMock.mockImplementation(() =>
+    json({
+      sources: [citation],
+      call_path: ["caller → service → database", "callback → verifier"],
+    })
+  )
+  render(<Page />)
+  fireEvent.change(screen.getByLabelText("Investigation question"), {
+    target: { value: "Fixture question" },
+  })
+  fireEvent.click(screen.getByRole("button", { name: "Explore code" }))
+  await screen.findByText("CODE EVIDENCE")
+  fireEvent.click(screen.getByRole("button", { name: "paths (2)" }))
+  expect(screen.getByText("caller → service → database")).toBeTruthy()
+  expect(screen.getByText("callback → verifier")).toBeTruthy()
+  expect(screen.queryByRole("button", { name: "paths (5)" })).toBeNull()
 })

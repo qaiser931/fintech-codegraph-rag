@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
 import "./globals.css"
+import "./codegraph.css"
 export const metadata: Metadata = {
-  title: "CodeGraph — Fintech Code Investigation",
+  title: "CodeGraph — Follow the code. Find the evidence.",
   description:
     "Explore symbols, trace execution paths, and inspect grounded answers in a synthetic fintech codebase.",
 }

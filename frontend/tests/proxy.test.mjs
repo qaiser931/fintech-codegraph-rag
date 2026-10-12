@@ -248,8 +248,12 @@ for (const query of ["invalid json", "wrong contract", "redirect test"])
     assert.ok(!seen.some((request) => request.path === "/credential-leak"))
   })
 test("Build includes the real dashboard and excludes fixture credentials from browser chunks", async () => {
-  const html = await (await fetch(base)).text()
-  assert.ok(html.includes("What do you want to investigate?"))
+  const landing = await (await fetch(base)).text()
+  assert.ok(landing.includes("Follow the code."))
+  assert.ok(landing.includes('href="/dashboard"'))
+  const html = await (await fetch(base + "/dashboard")).text()
+  assert.ok(html.includes("Connect the dots."))
+  assert.ok(html.includes("Investigation question"))
   assert.ok(html.includes("CodeGraph"))
   async function scan(dir) {
     for (const item of await readdir(dir, { withFileTypes: true })) {
