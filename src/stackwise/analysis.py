@@ -237,6 +237,20 @@ def ai_review(pull, context, history):
                       "summary": redact(str(raw.get("summary", "Review completed. All suggestions require human validation.")))[:2000]}
 
 
+def same_finding(left, right):
+    """Conservatively join the same titled issue over overlapping pinned evidence.
+
+    AI may quote a whole call while a static check points to its keyword line.
+    A shared starting line alone does not establish that two issues are equal.
+    """
+    a, b = left["evidence"], right["evidence"]
+    title_a = re.findall(r"\w+", left["title"].casefold())
+    title_b = re.findall(r"\w+", right["title"].casefold())
+    return bool(title_a and title_a == title_b and a.get("sha") and
+                a["sha"] == b.get("sha") and a["path"] == b["path"] and
+                max(a["start"], b["start"]) <= min(a["end"], b["end"]))
+
+
 def review_pull(pull, history=(), use_ai=True):
     started = time.monotonic()
     query = pull["title"] + " " + " ".join(f["path"] for f in pull["files"])
@@ -253,14 +267,19 @@ def review_pull(pull, history=(), use_ai=True):
     context = context[:8]
     findings = static_review(pull)
     extra, ai = ai_review(pull, context, list(history)) if use_ai else ([], {"status": "not_requested", "rejected": 0, "summary": "Focused static checks completed. Human review is required."})
+    duplicates = 0
     for item in extra:
-        if not any(f["evidence"]["path"] == item["evidence"]["path"] and f["evidence"]["start"] == item["evidence"]["start"] for f in findings):
+        if not any(same_finding(f, item) for f in findings):
             findings.append(item)
+        else:
+            # Static results come first, preserving their deterministic patch.
+            duplicates += 1
     tests_changed = any(re.search(r"(^|/)(tests?|__tests__)(/|[_.])|[._](test|spec)\.", f["path"]) for f in pull["files"])
     return {"findings": findings, "context": context, "summary": ai["summary"],
             "checks": {"ai": ai["status"], "rejected_citations": ai["rejected"], "tests_changed": tests_changed,
                        "test_execution": "not_run", "ci": pull.get("ci", {}),
-                       "static": "focused_patterns", "evidence": "File, line and exact quote checked against pinned head SHA; semantic correctness still needs human review."},
+                       "static": "focused_patterns", "deduplicated_findings": duplicates,
+                       "evidence": "File, line and exact quote checked against pinned head SHA; semantic correctness still needs human review."},
             "elapsed": round(time.monotonic() - started, 3)}
 
 
