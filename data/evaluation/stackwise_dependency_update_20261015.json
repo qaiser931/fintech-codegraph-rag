@@ -1,0 +1,24 @@
+{
+  "checked_at": "2026-10-15T14:26:24.349349+00:00",
+  "coverage": "The three upgraded direct package/version pairs only. Not a full dependency or application security audit.",
+  "packages": [
+    {
+      "ecosystem": "npm",
+      "name": "next",
+      "version": "16.4.1",
+      "advisories": []
+    },
+    {
+      "ecosystem": "npm",
+      "name": "eslint-config-next",
+      "version": "16.4.1",
+      "advisories": []
+    },
+    {
+      "ecosystem": "PyPI",
+      "name": "cryptography",
+      "version": "50.0.2",
+      "advisories": []
+    }
+  ]
+}
