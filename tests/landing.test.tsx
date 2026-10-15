@@ -6,33 +6,29 @@ afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
 })
-
-test("The landing page remains usable without a backend and opens the real workspace", () => {
+test("The Stackwise landing works without a backend and opens both live and demo workspaces", () => {
   const fetch = vi.fn()
   vi.stubGlobal("fetch", fetch)
   render(<HomePage />)
   expect(screen.getByRole("heading", { level: 1 }).textContent).toContain(
-    "Find the evidence"
+    "Know whichrepository needsyou next."
   )
-  const links = screen.getAllByRole("link", { name: "Open dashboard" })
-  expect(links.length).toBeGreaterThan(0)
-  for (const link of links) expect(link.getAttribute("href")).toBe("/dashboard")
-  expect(fetch).not.toHaveBeenCalled()
-  expect(screen.getByText("Illustrative preview")).toBeTruthy()
-  expect(screen.queryByText("SUPPORTED")).toBeNull()
-})
-
-test("Project links point to the actual repository and documentation", () => {
-  render(<HomePage />)
-  expect(
-    screen.getByRole("link", { name: "View source" }).getAttribute("href")
-  ).toBe("https://github.com/qaiser931/fintech-codegraph-rag")
   expect(
     screen
-      .getByRole("link", { name: /Explore the project documentation/ })
+      .getByRole("link", { name: "Open your workspace" })
       .getAttribute("href")
-  ).toContain("/docs/PROJECT10_REQUIREMENTS.md")
+  ).toBe("/dashboard")
   expect(
-    screen.getByText(/Individual successful requests are diagnostics/)
-  ).toBeTruthy()
+    screen.getByRole("link", { name: "Explore the demo" }).getAttribute("href")
+  ).toBe("/dashboard?demo=1")
+  expect(screen.getByText("Illustrative sample · no client data")).toBeTruthy()
+  expect(fetch).not.toHaveBeenCalled()
+})
+test("Human approval and truthful limits are visible on the landing", () => {
+  render(<HomePage />)
+  expect(screen.getByText(/No autonomous merges/)).toBeTruthy()
+  expect(screen.getByText("Clear coverage limits")).toBeTruthy()
+  expect(
+    screen.getByRole("link", { name: /View source/ }).getAttribute("href")
+  ).toBe("https://github.com/qaiser931/fintech-codegraph-rag")
 })

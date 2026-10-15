@@ -82,7 +82,12 @@ def test_non_reasoning_model_does_not_receive_gpt_oss_parameters(client):
     (500,502,'Cloud generation request failed.'),
 ])
 async def test_cloud_errors_are_sanitized_and_not_cached(upstream,expected,detail,caplog):
-    from src.api.main import app
+    # Exercise the actual shared routes without importing the optional native
+    # Chroma/PyTorch startup profile. The Vercel facade uses this router too.
+    from fastapi import FastAPI
+    from src.api.routes import router
+    app = FastAPI()
+    app.include_router(router)
     from src.api.dependencies import get_generator,get_authenticated_role
     from src.telemetry import query_result_cache,metrics_store
     request=httpx.Request('POST','https://api.groq.com/openai/v1/chat/completions',headers={'Authorization':'Bearer synthetic-private-key'})

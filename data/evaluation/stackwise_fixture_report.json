@@ -1,0 +1,114 @@
+{
+  "generated_utc": "2026-10-15T06:31:10.956525+00:00",
+  "scope": "Nine authored Python static-pattern fixtures and three sample-repository retrieval questions. No live model quality benchmark or proof of production accuracy.",
+  "static": {
+    "true_positive_cases": 4,
+    "false_positive_cases": 0,
+    "false_negative_cases": 0,
+    "cases": [
+      {
+        "case": "tls-off",
+        "expected_pattern_risk": true,
+        "finding_count": 1,
+        "matched_label": true,
+        "elapsed_ms": 2.543
+      },
+      {
+        "case": "sql-interpolation",
+        "expected_pattern_risk": true,
+        "finding_count": 1,
+        "matched_label": true,
+        "elapsed_ms": 0.193
+      },
+      {
+        "case": "shell-call",
+        "expected_pattern_risk": true,
+        "finding_count": 1,
+        "matched_label": true,
+        "elapsed_ms": 0.144
+      },
+      {
+        "case": "dynamic-eval",
+        "expected_pattern_risk": true,
+        "finding_count": 1,
+        "matched_label": true,
+        "elapsed_ms": 0.141
+      },
+      {
+        "case": "tls-on",
+        "expected_pattern_risk": false,
+        "finding_count": 0,
+        "matched_label": true,
+        "elapsed_ms": 0.099
+      },
+      {
+        "case": "bound-sql",
+        "expected_pattern_risk": false,
+        "finding_count": 0,
+        "matched_label": true,
+        "elapsed_ms": 0.109
+      },
+      {
+        "case": "shell-off",
+        "expected_pattern_risk": false,
+        "finding_count": 0,
+        "matched_label": true,
+        "elapsed_ms": 0.109
+      },
+      {
+        "case": "literal-example",
+        "expected_pattern_risk": false,
+        "finding_count": 0,
+        "matched_label": true,
+        "elapsed_ms": 0.08
+      },
+      {
+        "case": "comment-example",
+        "expected_pattern_risk": false,
+        "finding_count": 0,
+        "matched_label": true,
+        "elapsed_ms": 0.08
+      }
+    ]
+  },
+  "retrieval": {
+    "hits_at_3": 3,
+    "questions": [
+      {
+        "question": "get_account user_id",
+        "expected_file": "auth/routes.py",
+        "top_3_files": [
+          "auth/routes.py",
+          "services/accounts.py"
+        ],
+        "hit_at_3": true,
+        "elapsed_ms": 0.252
+      },
+      {
+        "question": "fetch_account balance",
+        "expected_file": "services/accounts.py",
+        "top_3_files": [
+          "tests/test_accounts.py",
+          "services/accounts.py",
+          "auth/routes.py"
+        ],
+        "hit_at_3": true,
+        "elapsed_ms": 0.222
+      },
+      {
+        "question": "test_account_shape",
+        "expected_file": "tests/test_accounts.py",
+        "top_3_files": [
+          "tests/test_accounts.py"
+        ],
+        "hit_at_3": true,
+        "elapsed_ms": 0.185
+      }
+    ]
+  },
+  "limitations": [
+    "Labels describe expected pattern warnings, not proven exploitable bugs.",
+    "Latency is local fixture analysis only; excludes GitHub downloads, queue wait and Groq.",
+    "Useful/false-positive feedback from real reviewers must be measured after deployment."
+  ]
+}

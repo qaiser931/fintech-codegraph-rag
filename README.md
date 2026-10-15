@@ -1,121 +1,81 @@
-# Fintech CodeGraph RAG
+# Stackwise
 
-A Next.js investigation workspace and FastAPI API deployed together on Vercel.
-Open the landing page at `/` and the workspace at `/dashboard`. The browser uses
-same-origin `/api/*` routes. Docker, Cloudflare tunnels, an Oracle VM and a running
-laptop are not required by this deployment.
+**Know which repository needs you next.**
 
-## Deploy from GitHub
+An evidence-led maintenance desk for software agencies: separate client workspaces,
+commit-pinned pull request reviews, direct dependency advisory checks and client reports.
+The interface follows the supplied *Stackwise Product Concept*. The previous CodeGraph
+implementation and its evaluation records remain in Git; its documentation is archived in
+[docs/archive/CODEGRAPH_README.md](docs/archive/CODEGRAPH_README.md).
 
-See [Vercel deployment](docs/VERCEL.md). Select **Next.js**, set **Root Directory**
-to the repository root (empty), and enable Fluid compute. Use the default Next.js
-install/build settings. Set these server-only environment variables:
+## One application on Vercel
 
-- `GROQ_API_KEY`: your existing Groq key.
-- `API_ROLE_TOKENS`: the existing JSON token-to-role mapping, preserving all three roles.
-- `LLM_PROVIDER=groq`
-- `LLM_MODEL=openai/gpt-oss-120b`
+- **Frontend:** Next.js / React, agency overview and a three-column PR review workspace.
+- **Backend:** Python / FastAPI in `api/index.py`; same-origin `/api/*` routes.
+- **Data:** managed Postgres connected through the Vercel Marketplace. No runtime disk persistence.
+- **Jobs:** Python Vercel Queues subscriber, with saved, explicitly runnable stages as a fallback.
+- **AI:** Groq, using the existing server-side API key. No local model downloads or Ollama.
+- No Docker, VM, tunnel, laptop server or separate production ports.
 
-Remove the old `CODEGRAPH_API_URL` setting. It is no longer used. Keep credentials
-out of Git and never prefix them with `NEXT_PUBLIC_`.
+## What works in this first version
 
-Vercel's Python install hook installs locked lightweight dependencies, downloads
-pinned float32 ONNX models with SHA-256 verification, and builds immutable symbol,
-graph and dense indices before bundling the function. Models are not committed to
-GitHub and are not downloaded during requests. Build failure stops publication.
+1. An owner creates client workspaces and connects GitHub repositories. Public repositories
+   work without a token. Private repositories use a separately encrypted, repository-scoped
+   read-only token for each workspace.
+2. Import pins the default branch to a SHA and reads supported UTF-8 source files without
+   executing code. A successful refresh replaces only that repository's current snapshot;
+   earlier reviews retain their own source evidence. Failed imports retain the previous snapshot.
+3. A review reads the PR head, diff, related source and earlier Stackwise review summaries.
+   Focused static patterns and optional Groq suggestions are checked against the head's exact
+   source quote, file, line and SHA. Invalid source references are rejected.
+4. A reviewer inspects findings, previews/downloads diffs, records useful/false-positive feedback,
+   dismisses or marks findings resolved, and records request-changes/approval decisions.
+   **These decisions never modify code or GitHub PR state.**
+5. Dependency checks query OSV for exact direct npm/PyPI versions. CI check runs are read from
+   GitHub; client tests are never executed by Stackwise.
+6. Workspace-scoped weekly Markdown reports summarize open risks, recent reviews, reported
+   resolutions and next steps. A daily Vercel cron creates weekly snapshots and queues a bounded
+   round of repository refreshes.
+7. Repository Q&A returns source citations from the selected workspace's indexed commit.
 
-## Retrieval and generation
+`/dashboard?demo=1` is an interactive, clearly labeled sample portfolio. Its decisions are
+session-local and do not change connected client data. `/dashboard` requires a real access key.
 
-The API retains BGE semantic embeddings, BM25, RRF fusion, the MiniLM cross-encoder,
-and role-filtered NetworkX call-graph expansion. ONNX Runtime replaces PyTorch for
-inference. Exact cosine search over the small, immutable sample corpus replaces
-Chroma's persistent database. Dense candidates are filtered by clearance and tenant
-before scoring/ranking; graph expansion retains the existing role checks.
+## Setup and verification
 
-Groq generates answers using the existing citation and numeric-grounding validation.
-Questions and selected synthetic code snippets are sent to Groq. Its account quotas
-can return 429. No automatic generation retries or fabricated answer scores are used.
-A documented sample-code latency is not a measurement of production latency.
+See [docs/STACKWISE_DEPLOY.md](docs/STACKWISE_DEPLOY.md) for Vercel settings, Postgres,
+private environment variables, first sign-in and GitHub webhooks.
+See [docs/STACKWISE_SCOPE.md](docs/STACKWISE_SCOPE.md) for the concept mapping and explicit limits.
 
-## API and roles
-
-- `GET /api/health`: readiness, index counts and the UI `ok` flag.
-- `POST /api/retrieve`: authorized code evidence and call paths, without generation.
-- `POST /api/query`: grounded answer, status, citations and query telemetry.
-- `GET /api/source/{file_path}?role=...`: authorized source as literal JSON text.
-
-Request bodies contain `query`, `role` and optional `stack_trace`. The public demo
-retains its role selector; it is not a production login system. The server binds the
-selected demo role to its private token internally. Explicit bearer credentials,
-when supplied, still undergo the core API's 401 and role-mismatch 403 checks.
-Source requests cannot leave `data/sample_codebase` or elevate the selected role.
-
-Function files are read-only at runtime. Indices are rebuilt on deployment when
-sample sources change. Runtime cache and telemetry are bounded, per-process memory;
-they are neither durable nor shared between function instances. Cold starts and
-free-plan quotas remain possible; this is not an unlimited or guaranteed-uptime service.
-
-## Local development and checks
-
-Use Node 22/24 and Python 3.12. Install the root pnpm package and the lightweight
-Python requirements. Prepare the assets with `python scripts/prepare_vercel.py`.
-Install the Vercel CLI (`npm install -g vercel`). For the unified app, use `vercel dev`: one browser-facing development URL, with
-Vercel managing the internal runtimes. Do not start Docker or a tunnel.
-
-```text
+```sh
+python -m venv .venv-stackwise
+# Activate this environment, then:
+python -m pip install -r requirements.txt -c requirements-vercel.lock pytest==9.1.1
+python -m pytest -c tests/stackwise/pytest.ini --confcutdir=tests/stackwise tests/stackwise -q
 pnpm install --frozen-lockfile
-python -m pip install -r requirements.txt -c requirements-vercel.lock
-python scripts/prepare_vercel.py
-vercel dev
+pnpm lint
+pnpm typecheck
+pnpm test --maxWorkers=1
+pnpm build
 ```
 
-Frontend checks: `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test`.
-The serverless tests in `tests/test_serverless.py` use real bundled models but no
-live LLM request. They require prepared assets and pytest. The older native Python/
-Streamlit workflow is retained for reference in [the archive](docs/LOCAL_WORKFLOW_ARCHIVE.md);
-its optional dependencies are in `requirements-local.txt`, not in the Vercel bundle.
+Use `vercel dev` for the combined local app. The optional `pnpm dev:ui` command serves only
+Next.js and does not start Python; do not mistake that for a verified backend deployment.
 
-## Evaluation evidence
+## Boundaries
 
-The original gold dataset and saved evaluation remain in `data/evaluation`.
-The [fresh ONNX retrieval report](data/evaluation/vercel_retrieval_report.json) covers
-40 questions for each of the three roles (120 checks), with zero unauthorized
-results. Mean authorized expected-symbol context recall was 0.9423 for Junior Dev
-and 0.8854 for Senior Dev/Security Lead. These are full-context retrieval metrics,
-not answer correctness or equivalence to a newly rerun PyTorch benchmark.
+Findings remain **potential issues** until a human validates them. Source-location validation
+is not proof that a finding is semantically correct. A downloadable patch is not a tested fix.
+Repository text is untrusted data, not agent instructions. Credentials are heuristically
+redacted before storage/AI; remove sensitive material before importing a repository.
 
-### Assignment evidence and limits
+The starter supports GitHub snapshots of **350 supported files / 3 MB source / 100 KB per file**,
+PRs with at most **60 changed files**, 20 workspaces and 10 repositories per workspace.
+Python gets AST symbols; other languages use lexical text windows. There is no dense embedding
+model, test sandbox, transitive dependency solver, automatic fix branch, autonomous merge,
+GitHub App OAuth, billing or SSO in this version. The concept's pricing is a hypothesis,
+not an implemented paid plan. Provider and hosting quotas still apply.
 
-The gold dataset contains 40 questions with expected symbol document IDs, source
-files, execution paths and answer facts. Symbol document IDs are the stable citation
-references; numbered citation labels depend on each request's context ordering.
-Historical retrieval metrics are in `data/evaluation/real_report.md`. The successful
-2026-10-10 four-combination JazzCash demo achieved full expected-symbol context
-coverage after graph expansion for both authorized role sets. It is a one-question
-demo, not a newly completed 40-case benchmark or proof of generated-answer correctness.
-
-The evaluation utilities include code-symbol precision, call-path recall, execution
-path accuracy and a gold file/symbol citation-match proxy. The stored historical
-citation score is zero; source-link accessibility does not establish claim grounding.
-Answer-quality proxy scoring in `src/evaluation/llm_evaluation.py` is not a verified
-Ragas/DeepEval judge run. Its optional legacy DeepEval branch maps answer relevancy
-to answer correctness; that branch must not be cited as a valid correctness benchmark.
-A separate Q01 DeepEval 4.2.8 diagnostic completed on 2026-10-11 using
-the local `llama3.2:3b` judge: Faithfulness 1.0000, Answer Relevancy 0.3333,
-and Reference Correctness 0.6000 (threshold 0.70).
-Faithfulness uses a custom extraction prompt and schema capped at 20 facts
-**total** across the unchanged retrieved context. It is a limited-evidence
-single-case diagnostic; the earlier per-document extraction failed from
-timeouts/output truncation. Only Faithfulness passed. The local judge has
-not been human validated; this does not establish complete answer
-correctness or a newly completed 40-question benchmark. Metric evidence:
-[Q01 diagnostic](data/evaluation/q01_deepeval_diagnostic.json).
-No model-based hallucination score is claimed.
-
-The historical Chroma deployment applied role clearance inside its query. BM25 returns only authorized
-candidates but retains a shared server-side corpus in memory; physical per-role
-corpus isolation is not implemented. Telemetry and cache are bounded process-local
-stores. The earlier CPU-laptop timing results do not characterize this serverless deployment.
-
-The required 2-3 minute assignment video is a separate submission item. See `docs/PROJECT10_REQUIREMENTS.md` and
-`docs/VIDEO_SCRIPT.md` for the requirement mapping and recording sequence.
+Old CodeGraph model-judge results belong to the historical sample application, not to Stackwise.
+Incomplete runs and low scores are retained as such; they are not converted into a passing
+Stackwise benchmark.

@@ -12,6 +12,10 @@ URL, Docker container, tunnel, fixed public port or Oracle VM is used.
    install and `pnpm build`. Do not set a custom install command: the Python builder
    must run the repository's `tool.vercel.scripts.vercel-install` hook.
 4. Enable **Fluid compute**. `api/index.py` requests a 300-second maximum duration.
+   Retain the production setting `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` used for
+   this Python bundle. Without it, the earlier build was rejected at 386.43 MB
+   against the default 225 MB function-size check. The actual Vercel build result,
+   account limits and function configuration remain authoritative.
 5. Set `GROQ_API_KEY`, `API_ROLE_TOKENS`, `LLM_PROVIDER=groq` and
    `LLM_MODEL=openai/gpt-oss-120b` for the deployment environment. Use the existing
    private values; the Groq key and role JSON must never be shared in chat or Git.
@@ -60,6 +64,16 @@ function limits. Cold starts, monthly usage quotas and Groq free-account quotas 
 interrupt the demo. A passed local build is not a verified cloud deployment, and
 no permanent free uptime is promised. The GitHub push triggers deployment; the
 final cloud routing/build checks must pass in the user's Vercel project.
+
+## Recorded production verification
+
+Production checks on 2026-10-13 passed for the landing page, dashboard, readiness,
+all three retrieval roles, literal source rendering, invalid bearer rejection,
+source containment and confidential/restricted-source restrictions. One Q11
+documented latency answer was supported and cited. See
+`data/evaluation/final_live_checks.json` for exact scope and timestamps.
+These checks apply to the deployment observed at that time, not guaranteed
+future uptime or a full generated-answer correctness benchmark.
 
 Primary references:
 - https://vercel.com/docs/functions/runtimes/python

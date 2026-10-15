@@ -1,61 +1,39 @@
 # Edversity Project 10: requirement-to-evidence map
 
-Source: RAG-IdeaList-EdversityLab.pdf, page 13 (Project 10), page 2 (mandatory
-production standards) and page 1 (delivery rules). Reviewed 2026-10-10.
+Source: RAG-IdeaList-EdversityLab.pdf, Project 10 page 13, production standards
+page 2, delivery rules page 1. Updated 2026-10-13 for Vercel. This update retains
+the original requirement interpretation and does not mark missing scores complete.
 
-| Requirement | Implementation/evidence | Delivery status |
+| Requirement | Current evidence | Status / limits |
 | --- | --- | --- |
-| AST code parser and symbol extraction | src/ingestion/ast_parser.py, chunker.py | Implemented; offline parser tests passed |
-| Dependency graph and call expansion | graph_builder.py, retrieval/graph_expand.py | Implemented; real retrieval demo completed on laptop |
-| Dense + sparse search, RRF and cross-encoder reranking | retrieval/dense.py, bm25.py, rrf.py, reranker.py, hybrid.py | Implemented; three-mode real-model demo available |
-| Payment code query and optional stack trace | POST /query and /retrieve; Streamlit inputs | Implemented; deployment of Explore patch requires finish helper success |
-| Call paths and code line/file references | Query and retrieval response models; authenticated source viewer | Implemented; prior source fetch checks passed; manual visual check pending |
-| Failure impact analysis and technical answer | generator.py with code/path grounding and role prompts | Implemented engine; earlier live answer was INSUFFICIENT_EVIDENCE, not independently audited causal analysis |
-| Required four Project 10 metrics | evaluation/metrics.py and historical real_report.md | Historical symbol precision, path recall, path accuracy, citation-match proxy retained; historical citation score 0 |
-| 25-50 question gold benchmark | data/evaluation/gold_dataset.json contains 40 cases with document IDs, paths and answer facts | Available; no fresh full benchmark for final delivery |
-| Recall/precision/MRR/NDCG baselines | runner.py, run_real_evaluation.py, historical results JSON | Available; historical provenance/limits documented |
-| Faithfulness/correctness/hallucination via Ragas or DeepEval judge | llm_evaluation.py has deterministic proxies and optional legacy judge code | NOT verified; proxy output does not satisfy verified LLM-as-judge results. Relevancy must not be reported as correctness |
-| Metadata governance | CodeChunk doc/tenant/version/time/security/jurisdiction/source authority fields | Implemented; values are sample metadata |
-| Pre-retrieval authorization | Token-bound role, Chroma query filter, candidate/path filtering, source containment | Returned user results are filtered; BM25 uses a shared loaded corpus, not physical per-role memory isolation |
-| p50/p95, tokens, cost, cache | telemetry.py, GET /metrics, query response/UI | Implemented; process-local memory and cache reset on restart |
-| Typed failure statuses and structured traces | API models, generation evidence fallback, trace store | Implemented; authentication 401/403 verified historically |
-| FastAPI + functional web UI | src/api, ui; offline AppTest cases | 201 offline review tests passed; actual new laptop deployment/visual check pending helper/user |
-| Comprehensive README with architecture diagram | README.md Mermaid architecture and setup | Included in final bundle and patch |
-| Public GitHub repository | Clean project folder, credential-free template, ignore rules | Publication not verified; user must provide or publish repository URL |
-| 2-3 minute video | docs/VIDEO_SCRIPT.md | Recording plan provided; actual video not yet recorded |
+| AST parser and symbols | ast_parser.py, chunker.py | Implemented/tested; Python .py only |
+| Dependency graph/call expansion | graph_builder.py, graph_expand.py | Implemented/tested, including real retrieval |
+| Dense/sparse, RRF, cross-encoder | ONNX BGE/exact cosine, BM25, RRF, ONNX MiniLM | Implemented; three modes and three roles benchmarked |
+| Query and optional stack trace | /api/query, /api/retrieve, Next.js dashboard | Implemented/tested |
+| Call paths, file/line references | Typed responses and source viewer | Implemented; live source/access checks passed |
+| Failure impact/technical answers | Grounded generator, graph evidence, typed statuses | Implemented; full quality benchmark remains separate |
+| Code-symbol precision | final_retrieval_report.json | Fresh full-context symbol precision, distinct from Precision@5 |
+| Call-path recall | final_retrieval_report.json | Authorized reference-path symbol coverage in returned paths |
+| Execution-path accuracy | final_retrieval_report.json | Ordered authorized gold path in one returned path |
+| Citation groundedness | Q11 live check; final answer runner | One actual-answer reference-match proxy; full citation evaluation pending, not semantic grounding proof |
+| 25-50 gold questions | gold_dataset.json: 40 cases | Present; retrieval references filtered by role |
+| Recall/precision/MRR/NDCG baselines | Final ONNX report; historical real_results.json | Fresh ONNX three-mode benchmark; PyTorch history retained without equivalence claim |
+| Ragas/DeepEval faithfulness/correctness/hallucination | Explicit Groq/DeepEval final answer runner | SDK contract tested; full current judge run pending private-key execution |
+| Metadata governance | CodeChunk metadata/source references | Implemented; jurisdiction/authority/version values are fixtures |
+| Pre-retrieval authorization | Dense/BM25 candidates, graph/source checks | Implemented; no physical per-role corpus isolation; public sample selector is not login |
+| p50/p95, tokens, cost, cache | telemetry.py and query telemetry | Implemented; bounded process-local state, not durable/shared analytics |
+| Typed failures and traces | API models, error handling, tests | Implemented; live 400/401/403 passed; provider errors tested offline |
+| FastAPI and functional web UI | Root Next.js app, api/index.py | Deployed; live landing/dashboard checks passed |
+| README and architecture | README.md, VERCEL.md | Included with current setup and limits |
+| Public GitHub | github.com/qaiser931/fintech-codegraph-rag | Public main verified; final update push needs its own confirmation |
+| 2-3 minute video | VIDEO_SCRIPT.md | Excluded at user's request; not claimed complete |
 
-## Recorded real-model demo (one question)
+Detailed status: SUBMISSION.md. Evaluation commands/definitions: EVALUATION.md.
+Reports are in data/evaluation. The Vercel profile uses build-time immutable
+indices and a read-only runtime. Chroma/Streamlit/native indexing is optional
+historical source, not the deployed backend. Arbitrary upload/runtime re-indexing
+is not implemented in this submission.
 
-| Retrieval mode | Role | Recall@5 | Expected context coverage | Items | Time |
-| --- | --- | ---: | ---: | ---: | ---: |
-| vector | Senior Dev | 0.40 | 0.40 | 6 | 0.43 s |
-| hybrid | Senior Dev | 0.40 | 0.60 | 6 | 2.80 s |
-| hybrid_graph | Senior Dev | 0.40 | 1.00 | 12 | 4.38 s |
-| hybrid_graph | Junior Dev | 0.50 | 1.00 | 12 | 4.01 s |
-
-Coverage denominators differ: five Senior expected symbols, four Junior authorized
-symbols. Appended graph context can increase full-context coverage without changing
-Recall@5. Do not describe these results as a 40-case benchmark or universal accuracy.
-
-## Deadline submission
-
-1. Finish local deployment; confirm the site opens and the feature displays.
-2. Publish this project's clean source to a public GitHub repository and retain its URL.
-3. Record the 2-3 minute video with actual query/result, source links, role filtering,
-   typed failure behavior and accurately labeled metrics.
-4. Submit the repo and video links. State evaluation/isolation limits honestly.
-
-Full rubric compliance is not claimed until the pending delivery items and verified
-judge evaluation are completed. Do not manufacture scores to fill the gaps.
-
-Online demo update: the final offline run passed **204 tests** in 5.54 seconds, including public API-target isolation. Four focused helper checks passed for UI ownership and stale-listener rejection. The actual Windows tunnel and external browser result remain unverified until the laptop helper is run.
-
-## Vercel migration (2026-10-12)
-
-The current interface is the root Next.js app, with `/` and `/dashboard`. The
-serverless Python adapter is `api/index.py`. It uses pinned float32 ONNX BGE and
-MiniLM models, a read-only exact-cosine vector index, the existing BM25/RRF/graph
-pipeline and Groq generation. The earlier Chroma/Streamlit/container evidence
-above describes the historical local profile. Vercel cloud publication is pending
-project settings and live verification; no new generated-answer quality score is
-claimed. See `docs/VERCEL.md` and the separate ONNX retrieval report.
+The earlier Q01 DeepEval diagnostic is one limited-evidence local-judge case
+with below-threshold relevance/correctness. It is not current 40-case Groq
+quality evidence. Failed cases and missing scores must remain visible.

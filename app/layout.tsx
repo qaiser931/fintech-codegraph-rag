@@ -1,10 +1,10 @@
 import type { Metadata } from "next"
 import "./globals.css"
-import "./codegraph.css"
+import "./stackwise.css"
 export const metadata: Metadata = {
-  title: "CodeGraph — Follow the code. Find the evidence.",
+  title: "Stackwise — Know which repository needs you next.",
   description:
-    "Explore symbols, trace execution paths, and inspect grounded answers in a synthetic fintech codebase.",
+    "An evidence-led maintenance desk for agencies. Review pull requests, watch dependencies and create client-ready reports.",
 }
 export default function RootLayout({
   children,

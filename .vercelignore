@@ -12,3 +12,4 @@ data/vector_store/
 data/graph_index/
 data/bm25_index/
 codegraph_assets/
+.deepeval/

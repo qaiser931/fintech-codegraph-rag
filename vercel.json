@@ -4,25 +4,14 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 300,
-      "excludeFiles": "{app/**,assets/**,components/**,hooks/**,lib/**,public/**,tests/**,docs/**,ui/**,scripts/**,telemetry_logs/**,.env,.env.*,.venv*/**,requirements-local.txt}"
+      "excludeFiles": "{app/**,assets/**,components/**,hooks/**,lib/**,public/**,tests/**,docs/**,ui/**,scripts/**,telemetry_logs/**,data/**,codegraph_assets/**,.env,.env.*,.venv*/**,requirements-local.txt}"
     }
   },
   "rewrites": [
     {
-      "source": "/api/health",
-      "destination": "/api?endpoint=health"
-    },
-    {
-      "source": "/api/retrieve",
-      "destination": "/api?endpoint=retrieve"
-    },
-    {
-      "source": "/api/query",
-      "destination": "/api?endpoint=query"
-    },
-    {
-      "source": "/api/source/:file_path*",
-      "destination": "/api?endpoint=source/:file_path*"
+      "source": "/api/:path*",
+      "destination": "/api?endpoint=:path*"
     }
-  ]
+  ],
+  "crons": [{ "path": "/api/cron", "schedule": "0 5 * * *" }]
 }

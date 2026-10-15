@@ -9,6 +9,7 @@ retrieval benchmark so retrieval metrics remain unchanged.
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,7 +17,6 @@ from typing import Any, List, Sequence
 
 from src.evaluation.runner import EvaluationCase, load_gold_dataset
 from src.generation.generator import CodeRAGGenerator
-from src.ingestion.indexer import CodebaseIndexer
 from src.retrieval.hybrid import HybridRetriever
 
 
@@ -211,81 +211,29 @@ def _score_with_optional_model(
     answer: str,
     retrieved_context: Sequence[str],
 ) -> tuple[dict[str, float] | None, str]:
+    """Use an explicitly configured judge; never relabel relevancy as correctness.
+
+    The default legacy runner remains a clearly labelled proxy. Merely installing
+    an SDK does not authorize live requests. The final fail-closed benchmark is
+    scripts/final_answer_evaluation.py and never substitutes these proxies.
     """
-    Try a model-based evaluation backend when available.
-
-    This is intentionally graceful: DeepEval and Ragas are treated as
-    optional evaluation backends and the conservative proxy metrics remain
-    the fallback if the dependency is missing or the runtime model is not
-    configured.
-    """
-    if not answer.strip() or not retrieved_context:
+    model = os.environ.get("CODEGRAPH_JUDGE_MODEL", "").strip()
+    key = os.environ.get("GROQ_API_KEY", "").strip()
+    if not model or not key or not answer.strip() or not retrieved_context:
         return None, "proxy"
-
     try:
-        from deepeval import evaluate as deepeval_evaluate
-        from deepeval.metrics import (
-            AnswerRelevancyMetric,
-            FaithfulnessMetric,
-        )
-        from deepeval.test_case import LLMTestCase
+        from src.evaluation.judge import evaluate_answer
+        result = evaluate_answer(case.question, answer, list(retrieved_context),
+                                 case.answer_facts, model, key)
+        if result["complete"]:
+            metrics = result["metrics"]
+            return {
+                "faithfulness": metrics["faithfulness"]["score"],
+                "answer_correctness": metrics["reference_correctness"]["score"],
+                "hallucination_rate": 1.0 - metrics["hallucination_free"]["score"],
+            }, "deepeval"
     except Exception:
-        try:
-            from ragas import evaluate as ragas_evaluate
-            from ragas.metrics import (
-                answer_relevancy,
-                faithfulness,
-            )
-
-            _ = (ragas_evaluate, answer_relevancy, faithfulness)
-        except Exception:
-            return None, "proxy"
-
-        return None, "proxy"
-
-    try:
-        test_case = LLMTestCase(
-            input=case.question,
-            actual_output=answer,
-            expected_output=" ".join(case.answer_facts),
-            retrieval_context=list(retrieved_context),
-            context=list(retrieved_context),
-        )
-        result = deepeval_evaluate(
-            [test_case],
-            [FaithfulnessMetric(), AnswerRelevancyMetric()],
-        )
-
-        test_results = getattr(result, "test_results", [])
-        if not test_results:
-            return None, "proxy"
-
-        metrics_data = getattr(test_results[0], "metrics_data", []) or []
-        score_map: dict[str, float] = {}
-
-        for metric in metrics_data:
-            name = str(getattr(metric, "name", "")).lower()
-            score = getattr(metric, "score", None)
-            if not isinstance(score, (int, float)):
-                continue
-
-            if "faithfulness" in name:
-                score_map["faithfulness"] = float(score)
-            elif "relevancy" in name:
-                score_map["answer_correctness"] = float(score)
-
-        if "faithfulness" in score_map and "answer_correctness" in score_map:
-            score_map["hallucination_rate"] = max(
-                0.0,
-                min(
-                    1.0,
-                    1.0 - score_map["faithfulness"],
-                ),
-            )
-            return score_map, "deepeval"
-    except Exception:
-        return None, "proxy"
-
+        pass
     return None, "proxy"
 
 
@@ -489,7 +437,7 @@ def save_report(
     lines = [
         "# Codebase Graph RAG LLM Evaluation",
         "",
-        "Deterministic proxy evaluation of generated answers.",
+        "Legacy answer evaluation; each case records its backend. See the final answer runner for fail-closed model scores.",
         "",
         "| Metric | Score |",
         "| --- | ---: |",
@@ -501,11 +449,11 @@ def save_report(
         "",
         "- Faithfulness is estimated from overlap between generated answers and retrieved evidence.",
         "- Answer correctness is estimated against the gold `answer_facts`.",
-        "- Hallucination rate is calculated as `1 - faithfulness`.",
+        "- The proxy hallucination rate is `1 - proxy faithfulness`; DeepEval violation rate is 1 minus its separate hallucination-free score (not 1 minus faithfulness).",
         "",
         f"Evaluation backend used: {('deepeval' if any(result.evaluation_backend == 'deepeval' for result in results) else 'proxy')}",
         "",
-        "When DeepEval/Ragas is installed and configured with a model backend, the run may use model-based scoring; otherwise it falls back to deterministic proxy metrics.",
+        "Model judging requires explicit CODEGRAPH_JUDGE_MODEL and GROQ_API_KEY. Reference correctness uses G-Eval against gold facts; answer relevancy is not correctness. This legacy runner labels fallback cases as proxy; final_answer_evaluation.py instead preserves failed metrics as unscored.",
     ]
 
     REPORT_PATH.parent.mkdir(
@@ -611,6 +559,7 @@ def main(*, max_cases: int | None = 5) -> None:
             f"Loaded gold questions: {len(cases)}; evaluating a smoke subset of {len(selected_cases)} cases"
         )
 
+    from src.ingestion.indexer import CodebaseIndexer
     indexer = CodebaseIndexer()
     indexer.load_existing_indices()
 

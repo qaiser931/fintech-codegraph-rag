@@ -1,5 +1,5 @@
 {
-  "name": "codegraph-frontend",
+  "name": "stackwise",
   "version": "1.0.0",
   "type": "module",
   "private": true,
@@ -11,7 +11,8 @@
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "dev:ui": "next dev"
+    "dev:ui": "next dev",
+    "test:python": "python -m pytest --confcutdir=tests/stackwise tests/stackwise -q -p no:cacheprovider"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

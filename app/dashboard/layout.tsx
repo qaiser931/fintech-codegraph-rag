@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Investigation Workspace — CodeGraph",
+  title: "Agency workspace — Stackwise",
   description:
-    "Explore source references, execution paths and code-grounded answers with your selected demo role.",
+    "Review client code, inspect evidence and prioritize repository maintenance.",
 }
 
 export default function DashboardLayout({

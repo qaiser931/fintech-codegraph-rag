@@ -3,386 +3,302 @@ import {
   ArrowDown,
   ArrowRight,
   ArrowUpRight,
-  BookOpen,
   Check,
   ChevronRight,
   Code2,
-  GitBranch,
-  GitFork,
+  FileCheck2,
+  GitPullRequest,
   Layers3,
   LockKeyhole,
-  Search,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react"
-import { CodeGraphBrand, GraphIllustration } from "@/components/codegraph-brand"
-
-const repository = "https://github.com/qaiser931/fintech-codegraph-rag"
+import { StackwiseBrand } from "@/components/stackwise-brand"
 
 export default function HomePage() {
   return (
-    <div className="cg-site">
-      <a className="cg-skip" href="#main-content">
+    <div className="sw-site">
+      <a className="sw-skip" href="#main">
         Skip to content
       </a>
-      <header className="cg-site-header">
-        <Link href="/" aria-label="CodeGraph home">
-          <CodeGraphBrand />
+      <header className="sw-site-nav">
+        <Link href="/" aria-label="Stackwise home">
+          <StackwiseBrand />
         </Link>
-        <nav aria-label="Main navigation" className="cg-site-nav">
-          <a href="#capabilities">Capabilities</a>
+        <nav aria-label="Main navigation">
           <a href="#workflow">How it works</a>
-          <a href="#project">The project</a>
+          <a href="#platform">The platform</a>
+          <a href="#principles">Our approach</a>
         </nav>
-        <Link className="cg-button cg-button-small" href="/dashboard">
-          Open dashboard <ArrowUpRight size={15} />
+        <Link className="sw-btn sw-btn-dark" href="/dashboard">
+          Open workspace <ArrowUpRight size={15} />
         </Link>
       </header>
-      <main id="main-content">
-        <section className="cg-hero cg-container">
-          <div className="cg-hero-copy">
-            <span className="cg-eyebrow">
-              <span className="cg-pip" /> CODE INTELLIGENCE, CONNECTED
-            </span>
+      <main id="main">
+        <section className="sw-hero">
+          <div className="sw-hero-copy">
+            <div className="sw-eyebrow">
+              <span className="sw-live-dot" /> YOUR AGENCY’S MAINTENANCE DESK
+            </div>
             <h1>
-              Follow the code.
+              Know which
               <br />
-              Find the <span>evidence.</span>
+              repository needs
+              <br />
+              <em>you next.</em>
             </h1>
             <p>
-              Turn a fintech codebase into a conversation you can verify.
-              Explore symbols, trace payment flows, and inspect the source
-              behind every answer.
+              Less time chasing issues. More time shipping good work. Review
+              pull requests, keep client code healthy, and explain what matters
+              — all in one place.
             </p>
-            <div className="cg-hero-actions">
-              <Link className="cg-button" href="/dashboard">
-                Open dashboard <ArrowRight size={18} />
+            <div className="sw-hero-actions">
+              <Link className="sw-btn sw-btn-green" href="/dashboard">
+                Open your workspace <ArrowRight size={17} />
               </Link>
-              <a
-                className="cg-button cg-button-quiet"
-                href={repository}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <GitFork size={18} /> View source
-              </a>
+              <Link className="sw-text-link" href="/dashboard?demo=1">
+                Explore the demo <ArrowUpRight size={16} />
+              </Link>
             </div>
-            <div className="cg-hero-footnote">
-              <ShieldCheck size={15} /> Role-scoped evidence <span /> Synthetic
-              fintech demo
+            <div className="sw-hero-note">
+              <ShieldCheck size={15} /> Evidence with every finding. A human
+              behind every change.
             </div>
           </div>
-          <div className="cg-hero-visual">
-            <div className="cg-preview-window">
-              <div className="cg-window-bar">
-                <div className="cg-window-dots">
-                  <i />
-                  <i />
-                  <i />
-                </div>
-                <span>codegraph / investigation</span>
-                <span className="cg-window-tag">Illustrative preview</span>
+          <div
+            className="sw-hero-art"
+            aria-label="Illustrative Stackwise review preview"
+          >
+            <div className="sw-art-orbit sw-orbit-1" />
+            <div className="sw-art-orbit sw-orbit-2" />
+            <div className="sw-preview-card">
+              <div className="sw-preview-top">
+                <StackwiseBrand small />
+                <span className="sw-badge sw-badge-green">Review ready</span>
               </div>
-              <div className="cg-preview-question">
-                <Search size={17} />
-                <span>How does this payment flow connect?</span>
-                <kbd>↵</kbd>
+              <div className="sw-preview-label">CLIENT ALPHA / API-SERVICE</div>
+              <h2>
+                A small change.
+                <br />
+                The full picture.
+              </h2>
+              <div className="sw-preview-code">
+                <span className="sw-code-file">
+                  <Code2 size={13} /> auth/routes.py
+                </span>
+                <code>
+                  <span>07</span> @router.get(&quot;/account&quot;)
+                  <br />
+                  <span>08</span> def get_account(user_id: str):
+                  <br />
+                  <span>09</span> return fetch_account(user_id)
+                </code>
               </div>
-              <div className="cg-preview-graph-label">
-                <GitBranch size={13} /> Connected source context{" "}
-                <span>PYTHON</span>
-              </div>
-              <GraphIllustration />
-              <div className="cg-preview-code">
+              <div className="sw-preview-finding">
                 <div>
-                  <Code2 size={14} /> payment_service.py{" "}
-                  <span>Sample excerpt</span>
+                  <span className="sw-badge sw-badge-high">HIGH</span>
+                  <small>Potential issue</small>
                 </div>
-                <pre>
-                  <code>
-                    <span className="cg-code-purple">with</span>{" "}
-                    get_db_session() <span className="cg-code-purple">as</span>{" "}
-                    session:{"\n"} account =
-                    payment_repository.acquire_account_lock(...){"\n"}{" "}
-                    switch_res = onelink_client.verify_switch_transaction(...)
-                  </code>
-                </pre>
+                <strong>Who owns this account?</strong>
+                <p>Check caller ownership before returning account data.</p>
+                <div className="sw-mini-evidence">
+                  <Check size={13} /> Source location checked{" "}
+                  <span>Lines 7–9</span>
+                </div>
               </div>
+              <Link href="/dashboard?demo=1" className="sw-preview-action">
+                Inspect the evidence <ArrowRight size={15} />
+              </Link>
+              <small className="sw-preview-caption">
+                Illustrative sample · no client data
+              </small>
             </div>
-            <div className="cg-evidence-float">
-              <span className="cg-check-icon">
-                <Check size={15} />
+            <div className="sw-floating-note">
+              <span className="sw-float-icon">
+                <GitPullRequest size={18} />
               </span>
               <div>
-                <strong>Inspect the original source</strong>
-                <p>A clear path from answer to evidence.</p>
+                <strong>Context, connected.</strong>
+                <span>Changed code + callers + tests</span>
               </div>
-              <ArrowUpRight size={17} />
             </div>
-            <span className="cg-visual-note">
-              Illustration of the workflow · Open the dashboard for live results
+            <span className="sw-art-label">
+              DESIGNED FOR THE PEOPLE BEHIND THE CODE
             </span>
           </div>
         </section>
-        <div className="cg-stack-strip cg-container">
-          <span>BUILT TO CONNECT</span>
-          <div>Next.js</div>
-          <div>FastAPI</div>
-          <div>Chroma</div>
-          <div>NetworkX</div>
-          <div>Groq</div>
-          <span className="cg-stack-strip-end">
-            <Layers3 size={16} /> One investigation workspace
+        <div className="sw-value-strip">
+          <span>
+            One clear view.
+            <br />
+            <strong>Across every client.</strong>
+          </span>
+          <span>
+            <Layers3 size={19} /> Client workspaces
+          </span>
+          <span>
+            <GitPullRequest size={19} /> Context-aware reviews
+          </span>
+          <span>
+            <ShieldCheck size={19} /> Dependency visibility
+          </span>
+          <span>
+            <FileCheck2 size={19} /> Client-ready reports
           </span>
         </div>
-        <section id="capabilities" className="cg-capabilities cg-container">
-          <div className="cg-section-heading">
+        <section id="workflow" className="sw-section">
+          <div className="sw-section-intro">
             <div>
-              <span className="cg-eyebrow">THE WHOLE PICTURE</span>
+              <span className="sw-eyebrow">
+                FROM PULL REQUEST TO PEACE OF MIND
+              </span>
               <h2>
-                Less searching.
+                Understand first.
                 <br />
-                More understanding.
+                <em>Change with confidence.</em>
               </h2>
             </div>
             <p>
-              Move from a question to the relevant code, then follow the
-              connections that give it context.
+              Good maintenance starts with the right context. Stackwise brings
+              the code, the evidence, and the next step together.
             </p>
           </div>
-          <div className="cg-feature-grid">
-            <article className="cg-feature cg-feature-search">
-              <span className="cg-feature-icon">
-                <Search size={22} />
-              </span>
-              <h3>Search beyond keywords.</h3>
-              <p>
-                Dense and BM25 search work together to find symbols and code
-                context. A cross-encoder reranks the candidates.
-              </p>
-              <div className="cg-search-mini">
-                <span>
-                  <Search size={14} /> 1LINK peak traffic latency
-                </span>
-                <div>
-                  <span className="cg-mini-file">PY</span>
-                  <span>
-                    verify_switch_transaction
-                    <small>integrations/onelink_client.py</small>
-                  </span>
-                  <ArrowUpRight size={15} />
+          <div className="sw-steps">
+            {[
+              {
+                icon: GitPullRequest,
+                n: "01",
+                title: "Review the change",
+                body: "Read a pull request alongside relevant callers, tests, contracts and earlier reviews.",
+              },
+              {
+                icon: ShieldCheck,
+                n: "02",
+                title: "Verify the evidence",
+                body: "Inspect the exact file, line and commit behind a potential bug or security concern.",
+              },
+              {
+                icon: FileCheck2,
+                n: "03",
+                title: "Make the call",
+                body: "Preview a suggested patch, record your decision and share a clear maintenance report.",
+              },
+            ].map((s) => (
+              <article key={s.n}>
+                <div className="sw-step-top">
+                  <s.icon size={24} strokeWidth={1.5} />
+                  <span>{s.n}</span>
                 </div>
-              </div>
-              <span className="cg-feature-caption">
-                Example symbol match from the sample code
-              </span>
-            </article>
-            <article className="cg-feature">
-              <span className="cg-feature-icon mint">
-                <GitBranch size={22} />
-              </span>
-              <h3>Follow the execution path.</h3>
-              <p>
-                Explore the graph around retrieved symbols to understand
-                callers, dependencies and the available call sequence.
-              </p>
-              <div className="cg-path-mini">
-                <span>Callback</span>
-                <ChevronRight size={15} />
-                <span>Service</span>
-                <ChevronRight size={15} />
-                <span>Switch</span>
-              </div>
-              <span className="cg-feature-caption">
-                Illustrative payment flow
-              </span>
-            </article>
-            <article className="cg-feature">
-              <span className="cg-feature-icon peach">
-                <BookOpen size={22} />
-              </span>
-              <h3>Keep the source in view.</h3>
-              <p>
-                Open a reference to inspect the file and highlighted lines.
-                Judge the answer alongside its actual source evidence.
-              </p>
-              <div className="cg-source-mini">
-                <span>onelink_client.py</span>
-                <div>
-                  <i>36</i> LATENCY CHARACTERISTIC:
-                </div>
-                <div className="highlight">
-                  <i>38</i> latency fluctuates between 2.0s and 6.0s
-                </div>
-              </div>
-              <span className="cg-feature-caption">
-                Documented sample behavior, not production measurements
-              </span>
-            </article>
-            <article className="cg-feature cg-feature-roles">
-              <span className="cg-feature-icon">
-                <LockKeyhole size={22} />
-              </span>
-              <h3>The right context for each role.</h3>
-              <p>
-                Switch between the three demo roles. Retrieval and source access
-                respect the backend&apos;s configured permissions.
-              </p>
-              <div className="cg-role-chips">
-                <span>
-                  <span className="cg-role-initial">J</span> Junior Dev
-                </span>
-                <span>
-                  <span className="cg-role-initial">S</span> Senior Dev
-                </span>
-                <span>
-                  <span className="cg-role-initial">L</span> Security Lead
-                </span>
-              </div>
-            </article>
+                <h3>{s.title}</h3>
+                <p>{s.body}</p>
+              </article>
+            ))}
           </div>
         </section>
-        <section id="workflow" className="cg-workflow-section">
-          <div className="cg-container">
-            <div className="cg-section-heading">
-              <div>
-                <span className="cg-eyebrow">FROM QUESTION TO CONTEXT</span>
-                <h2>
-                  One workspace.
-                  <br />
-                  Three useful steps.
-                </h2>
-              </div>
-              <Link className="cg-text-link" href="/dashboard">
-                Try the workflow <ArrowUpRight size={17} />
-              </Link>
-            </div>
-            <div className="cg-steps">
-              <article>
-                <span className="cg-step-number">
-                  01 <Search size={23} />
-                </span>
-                <h3>Ask a specific question</h3>
-                <p>
-                  Choose a role, describe the behavior you want to understand,
-                  and add a stack trace if you have one.
-                </p>
-              </article>
-              <article>
-                <span className="cg-step-number">
-                  02 <GitBranch size={23} />
-                </span>
-                <h3>Explore the code</h3>
-                <p>
-                  Inspect matching symbols and execution paths before requesting
-                  a generated answer.
-                </p>
-              </article>
-              <article>
-                <span className="cg-step-number">
-                  03 <Sparkles size={23} />
-                </span>
-                <h3>Verify the answer</h3>
-                <p>
-                  Read the evidence status, open citations and compare the
-                  response with the referenced lines.
-                </p>
-              </article>
-            </div>
-          </div>
-        </section>
-        <section id="project" className="cg-project cg-container">
-          <div className="cg-project-copy">
-            <span className="cg-eyebrow">
-              PROJECT 10 / FINTECH CODEGRAPH RAG
+        <section id="platform" className="sw-platform-section">
+          <div className="sw-platform-copy">
+            <span className="sw-eyebrow">
+              THE BIG PICTURE, WITHOUT THE NOISE
             </span>
             <h2>
-              A practical lens on
+              Your clients are different.
               <br />
-              payment integrations.
+              <em>The standard stays high.</em>
             </h2>
             <p>
-              A code investigation demo built around synthetic JazzCash, 1LINK
-              and EasyPaisa examples. Python symbols become a searchable
-              dependency graph; retrieved context supports technical answers
-              through Groq.
+              Move from a portfolio overview to a single changed line. Keep
+              client workspaces separate, prioritize open risks, and turn
+              technical findings into practical next steps.
             </p>
-            <a
-              className="cg-text-link"
-              href={`${repository}/blob/main/docs/PROJECT10_REQUIREMENTS.md`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Explore the project documentation <ArrowUpRight size={17} />
-            </a>
+            <Link className="sw-text-link" href="/dashboard?demo=1">
+              Take a look inside <ArrowRight size={16} />
+            </Link>
           </div>
-          <div className="cg-project-details">
-            <details open>
-              <summary>
-                What does this demonstration establish?
-                <span>
-                  <ArrowDown size={16} />
-                </span>
-              </summary>
-              <p>
-                You can explore source references, inspect available execution
-                paths and request answers grounded in retrieved code. Individual
-                successful requests are diagnostics, not proof of complete
-                benchmark accuracy.
-              </p>
-            </details>
-            <details>
-              <summary>
-                Is this a real payment system?
-                <span>
-                  <ArrowDown size={16} />
-                </span>
-              </summary>
-              <p>
-                No. The sample integrations and credentials are demonstration
-                fixtures. They do not establish live provider performance or
-                production approval.
-              </p>
-            </details>
-            <details>
-              <summary>
-                How should I read an evidence status?
-                <span>
-                  <ArrowDown size={16} />
-                </span>
-              </summary>
-              <p>
-                The dashboard distinguishes supported, partially supported,
-                conflicting and insufficient evidence. Inspect the source when
-                evaluating a claim; a status label alone is not proof of
-                correctness.
-              </p>
-            </details>
+          <div className="sw-workspace-preview">
+            <div className="sw-panel-heading">
+              <h3>Workspace health</h3>
+              <span className="sw-badge">Sample portfolio</span>
+            </div>
+            {[
+              {
+                n: "Client Alpha",
+                c: "A",
+                p: "API service",
+                s: "Needs attention",
+                color: "high",
+              },
+              {
+                n: "Client Beta",
+                c: "B",
+                p: "Web application",
+                s: "Not indexed",
+                color: "neutral",
+              },
+              {
+                n: "Internal tools",
+                c: "I",
+                p: "Release CLI",
+                s: "Not indexed",
+                color: "neutral",
+              },
+            ].map((w) => (
+              <div className="sw-workspace-preview-row" key={w.n}>
+                <span className="sw-avatar">{w.c}</span>
+                <div>
+                  <strong>{w.n}</strong>
+                  <small>{w.p}</small>
+                </div>
+                <span className={`sw-badge sw-badge-${w.color}`}>{w.s}</span>
+                <ChevronRight size={16} />
+              </div>
+            ))}
+            <p>
+              <LockKeyhole size={13} /> Workspace access is checked before
+              retrieving code.
+            </p>
           </div>
         </section>
-        <section className="cg-cta cg-container">
+        <section id="principles" className="sw-section sw-principles">
+          <span className="sw-eyebrow">BUILT ON A SIMPLE PRINCIPLE</span>
+          <h2>
+            AI brings the context.
+            <br />
+            <em>You bring the judgment.</em>
+          </h2>
+          <p>
+            Stackwise suggests and explains. Your team approves. No autonomous
+            merges, no silent deployments, and no test results that never
+            happened.
+          </p>
           <div>
-            <span className="cg-eyebrow">START WITH A QUESTION</span>
-            <h2>
-              Your next insight
-              <br />
-              is in the code.
-            </h2>
-            <p>Open the investigation workspace and follow the evidence.</p>
+            <span>
+              <Check size={16} /> Inspectable code evidence
+            </span>
+            <span>
+              <Check size={16} /> Downloadable patch previews
+            </span>
+            <span>
+              <Check size={16} /> Clear coverage limits
+            </span>
           </div>
-          <Link className="cg-button cg-button-light" href="/dashboard">
-            Open dashboard <ArrowUpRight size={20} />
+          <Link className="sw-btn sw-btn-green" href="/dashboard?demo=1">
+            Explore a sample review <ArrowRight size={16} />
           </Link>
-          <div className="cg-cta-orbit" aria-hidden="true" />
         </section>
       </main>
-      <footer className="cg-site-footer cg-container">
-        <Link href="/" aria-label="CodeGraph home">
-          <CodeGraphBrand compact />
+      <footer className="sw-site-footer">
+        <Link href="/">
+          <StackwiseBrand />
         </Link>
-        <span>Project 10 · Synthetic fintech demonstration</span>
-        <a href={repository} target="_blank" rel="noopener noreferrer">
-          GitHub <ArrowUpRight size={14} />
+        <span>Know which repository needs you next.</span>
+        <a
+          href="https://github.com/qaiser931/fintech-codegraph-rag"
+          target="_blank"
+          rel="noreferrer"
+        >
+          View source <ArrowUpRight size={14} />
+        </a>
+        <a href="#main" aria-label="Back to top">
+          <ArrowDown className="sw-up" size={17} />
         </a>
       </footer>
     </div>
