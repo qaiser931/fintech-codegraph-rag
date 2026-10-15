@@ -79,4 +79,5 @@ not an implemented paid plan. Provider and hosting quotas still apply.
 Old CodeGraph model-judge results belong to the historical sample application, not to Stackwise.
 Incomplete runs and low scores are retained as such; they are not converted into a passing
 Stackwise benchmark.
+
 This repository is used to test the Stackwise pull request review workflow.
