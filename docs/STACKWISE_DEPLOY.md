@@ -17,8 +17,8 @@ source before retrying. Do not run `git reset --hard` or delete the existing pro
 
 Keep the existing repository and project. Root Directory: repository root (empty / `.`).
 Framework: Next.js. Node: 22 or 24. Python: 3.12, as pinned in `.python-version`.
-Enable Fluid compute. Keep normal install/build defaults; do not run the historical
-`scripts/prepare_vercel.py` hook. The new Python install hook downloads no models.
+Enable Fluid compute. Keep normal install/build defaults. The Stackwise Python install
+hook downloads no models. Historical CodeGraph preparation hooks are not part of this checkout.
 
 ## 3. Durable storage
 

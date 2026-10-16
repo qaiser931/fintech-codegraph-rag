@@ -1,4 +1,0 @@
-# Install in a separate evaluation venv; not part of the Vercel runtime.
-deepeval==4.2.8
-httpx==0.28.1
-python-dotenv==1.2.4

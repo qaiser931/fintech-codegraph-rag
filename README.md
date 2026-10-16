@@ -4,9 +4,9 @@
 
 An evidence-led maintenance desk for software agencies: separate client workspaces,
 commit-pinned pull request reviews, direct dependency advisory checks and client reports.
-The interface follows the supplied *Stackwise Product Concept*. The previous CodeGraph
-implementation and its evaluation records remain in Git; its documentation is archived in
-[docs/archive/CODEGRAPH_README.md](docs/archive/CODEGRAPH_README.md).
+The interface follows the supplied *Stackwise Product Concept*. This checkout contains
+only Stackwise application source, tests and relevant documentation. See
+[repository layout and archive](docs/REPOSITORY_LAYOUT.md) for the retained historical version.
 
 ## One application on Vercel
 
@@ -53,8 +53,8 @@ Zero findings do not approve a review: both review screens display the recorded 
 ```sh
 python -m venv .venv-stackwise
 # Activate this environment, then:
-python -m pip install -r requirements.txt -c requirements-vercel.lock pytest==9.1.1
-python -m pytest -c tests/stackwise/pytest.ini --confcutdir=tests/stackwise tests/stackwise -q
+python -m pip install -r requirements.txt -r requirements-test.txt -c requirements-vercel.lock
+python -m pytest -q
 pnpm install --frozen-lockfile
 pnpm lint
 pnpm typecheck
@@ -79,8 +79,7 @@ model, test sandbox, transitive dependency solver, automatic fix branch, autonom
 GitHub App OAuth, billing or SSO in this version. The concept's pricing is a hypothesis,
 not an implemented paid plan. Provider and hosting quotas still apply.
 
-Old CodeGraph model-judge results belong to the historical sample application, not to Stackwise.
-Incomplete runs and low scores are retained as such; they are not converted into a passing
-Stackwise benchmark.
+Historical CodeGraph results remain in Git history and the separate old local project.
+They are not a Stackwise benchmark. See the archive reference in the repository-layout guide.
 
 This repository is used to test the Stackwise pull request review workflow.

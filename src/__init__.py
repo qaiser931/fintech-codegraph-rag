@@ -1,1 +1,1 @@
-"""Root package for Fintech CodeGraph RAG."""
+"""Stackwise Python application package."""

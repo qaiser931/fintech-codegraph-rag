@@ -28,7 +28,9 @@ The PR #4 list originally said “Reviewed” merely because it had zero open fi
 while its detail correctly said “needs review”. The UI correction derives both badges
 from the saved decision: **Needs review**, **Approved**, or **Changes requested**.
 Approval is an internal human record; it never merges or approves a GitHub PR.
-The UI correction's own production deployment must be checked after publication.
+The correction was published as `5ad3951334d13a6ac4cfffd4cf733ba8f6ed7ed1`;
+deployment success and public API checks were confirmed. This record does not claim
+an additional authenticated visual check of every decision badge after deployment.
 
 ## Local verification
 
@@ -50,12 +52,15 @@ The UI correction's own production deployment must be checked after publication.
 
 ## Boundaries retained
 
-The daily cron is configured but its scheduled invocation was not independently
-observed in this check. GitHub private-token permissions, large repositories, hosting
+On 16 October, the owner manually called the authenticated cron endpoint and received
+HTTP 200 with `reports=weekly_snapshots_saved`, `maintenance_jobs=1` and
+`queue_deliveries=1`. This proves the handler and one publication, not the job's
+completion or an automatic scheduled invocation. The latter remains unobserved.
+GitHub private-token permissions, large repositories, hosting
 quotas and broader model accuracy require their own checks. There is no test sandbox,
 automatic fix branch, merge, billing or SSO. Historical CodeGraph judge results remain
 historical, including incomplete runs and low scores.
 
-The deliberately unsafe test PRs #2 and #3 should remain unmerged. PR #4 is also a
-controlled fixture; closing a test PR does not retroactively change its saved review
+Test PRs #2, #3 and #4 were verified closed without merging. Closing a test PR does not
+retroactively change its saved review
 or turn its old findings into a demonstrated production resolution.

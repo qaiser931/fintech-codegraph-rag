@@ -58,7 +58,8 @@ No in-process background task is trusted to survive a Vercel response.
 
 ## Historical CodeGraph evidence
 
-Existing source, reports and partial 40-case judge runs are retained. They describe the previous
+Earlier source, reports and partial 40-case judge runs are retained in Git history and the
+separate old local project (see [repository layout](REPOSITORY_LAYOUT.md)). They describe the previous
 fintech sample and are not a Stackwise acceptance score. In particular, completed cases with low
 correctness/hallucination scores must not be described as passing tests. The migration does not
 restart that judge run or substitute missing scores.

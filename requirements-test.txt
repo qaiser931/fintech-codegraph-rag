@@ -1,4 +1,2 @@
-# Test-only additions to the lightweight runtime; not deployed to Vercel.
+# Local tests only; install after the lightweight runtime requirements.
 pytest==9.1.1
-pytest-asyncio==1.4.0
-requests==2.34.2
