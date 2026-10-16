@@ -5,11 +5,23 @@
     "api/index.py": {
       "maxDuration": 300,
       "excludeFiles": "{app/**,assets/**,components/**,hooks/**,lib/**,public/**,tests/**,docs/**,ui/**,scripts/**,telemetry_logs/**,data/**,codegraph_assets/**,.env,.env.*,.venv*/**,requirements-local.txt}"
+    },
+    "api/queue_worker.py": {
+      "maxDuration": 300,
+      "regions": ["iad1"],
+      "excludeFiles": "{app/**,assets/**,components/**,hooks/**,lib/**,public/**,tests/**,docs/**,ui/**,scripts/**,telemetry_logs/**,data/**,codegraph_assets/**,.env,.env.*,.venv*/**,requirements-local.txt}",
+      "experimentalTriggers": [{
+        "type": "queue/v2beta",
+        "topic": "stackwise-jobs",
+        "maxConcurrency": 2,
+        "maxDeliveries": 5,
+        "retryAfterSeconds": 300
+      }]
     }
   },
   "rewrites": [
     {
-      "source": "/api/:path*",
+      "source": "/api/:path((?!queue_worker(?:/|$)).*)",
       "destination": "/api?endpoint=:path*"
     }
   ],

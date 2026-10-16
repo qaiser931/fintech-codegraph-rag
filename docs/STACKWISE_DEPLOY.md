@@ -57,9 +57,19 @@ The old `API_ROLE_TOKENS`, `CODEGRAPH_API_URL` and Ollama settings are unused by
 
 ## 5. Redeploy and smoke-test
 
-Redeploy the new commit. Check Vercel logs for the Python function and the private
-`src.stackwise.worker` queue subscriber. The subscriber is declared in `pyproject.toml`;
-it is not an exposed public processing endpoint. Its module imports without database credentials.
+Redeploy the new commit. In the deployment Resources tab verify both `api/index.py`
+and the private `api/queue_worker.py` function. Its explicit `queue/v2beta` trigger in
+`vercel.json` subscribes to `stackwise-jobs`, in `iad1`, with concurrency 2 and at most
+5 delivery attempts. The SDK handles claims, lease renewal and acknowledgement.
+The handler imports without runtime secrets. Ordinary HTTP access must be denied
+by Vercel; CloudEvent headers alone are not authentication. Do not remove the trigger.
+
+This Next.js project uses standalone `api/*.py` functions. The Python builder does
+not compose `pyproject.toml` subscribers for those functions, so merely declaring
+`[[tool.vercel.subscribers]]` can publish messages without deploying a consumer.
+The explicit callback avoids changing the application's frontend/backend layout.
+Its consumer name uses the SDK encoding of the exact `api/queue_worker.py`
+configuration key. The main API rewrite excludes that callback path.
 
 - Open `/` for the Stackwise landing and `/dashboard?demo=1` for the sample review.
 - Open `/api/health` to check the deployed service name is `stackwise`.
@@ -70,6 +80,13 @@ it is not an exposed public processing endpoint. Its module imports without data
 - If a queue delivery is unavailable, use **Run next stage**. A failed stage requires explicit
   **Retry saved stage**; no infinite provider retry loop exists.
 - Review a PR number. Verify its SHA and exact line evidence. Inspect/download a patch if available.
+- To verify automatic processing, submit a review once and do not press **Run next
+  stage**. `delivery: queued` proves publication only; observe snapshot → analysis
+  → complete and `Stackwise worker` log entries before claiming automation works.
+  After a deployment, explicitly submitting the same PR republishes its pending job
+  to the current deployment; completed unchanged-head reviews are reused. Existing
+  jobs/records are retained, and old deployment messages are not silently migrated.
+  A changed deployment ID gets a distinct publication idempotency key.
 - Create a viewer key in Settings, then test in a separate private browser window: that key
   must see only its assigned workspace and cannot record decisions or start AI requests.
 - Generate and download a client report. Reload to confirm that real decisions persist.

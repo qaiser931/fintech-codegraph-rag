@@ -13,6 +13,3 @@ dependencies = [
 
 [tool.vercel.scripts]
 vercel-install = "python scripts/vercel_install.py"
-
-[[tool.vercel.subscribers]]
-entrypoint = "src.stackwise.worker"

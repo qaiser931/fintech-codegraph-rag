@@ -130,12 +130,13 @@ async def enqueue(job):
         client = QueueClient(region=os.getenv("STACKWISE_QUEUE_REGION", "iad1"))
         try:
             await client.send("stackwise-jobs", {"job_id": job.id},
-                              idempotency_key=f"{job.id}-{job.stage}-{int(job.updated)}")
+                              idempotency_key=f"{job.id}-{job.stage}-{int(job.updated)}-{os.getenv('VERCEL_DEPLOYMENT_ID', 'local')}")
         except DuplicateIdempotencyKeyError:
             pass
         return "queued"
-    except Exception:
+    except Exception as exc:
         # The database is the source of truth: owner can run the saved stage explicitly.
+        print(f"Stackwise queue unavailable: {type(exc).__name__}", flush=True)
         return "manual"
 
 
