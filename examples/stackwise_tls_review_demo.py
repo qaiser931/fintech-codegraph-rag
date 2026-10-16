@@ -5,6 +5,6 @@ import httpx
 def fetch_demo_status():
     return httpx.get(
         "https://example.com",
-        verify=False,
+        verify=True,
         timeout=5.0,
     )
