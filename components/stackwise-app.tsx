@@ -99,6 +99,15 @@ function Badge({
 }) {
   return <span className={`sw-badge sw-badge-${tone}`}>{children}</span>
 }
+function ReviewDecisionBadge({ status }: { status: string }) {
+  const approved = status === "approved"
+  const requested = status === "request_changes"
+  return (
+    <Badge tone={approved ? "green" : requested ? "high" : "medium"}>
+      {approved ? "Approved" : requested ? "Changes requested" : "Needs review"}
+    </Badge>
+  )
+}
 function Empty({
   title,
   children,
@@ -1476,9 +1485,7 @@ export default function StackwiseApp() {
                             {r.sha.slice(0, 8)}
                           </p>
                         </div>
-                        <Badge tone={active.length ? "medium" : "green"}>
-                          {active.length ? "Needs review" : "Reviewed"}
-                        </Badge>
+                        <ReviewDecisionBadge status={r.status} />
                         <ChevronRight size={17} />
                       </button>
                     )
@@ -2386,17 +2393,7 @@ function ReviewDesk({
           </p>
         </div>
         <div className="sw-review-decision">
-          <Badge
-            tone={
-              review.status === "request_changes"
-                ? "high"
-                : review.status === "approved"
-                  ? "green"
-                  : "medium"
-            }
-          >
-            {label(review.status)}
-          </Badge>
+          <ReviewDecisionBadge status={review.status} />
           {canWrite && (
             <>
               <button

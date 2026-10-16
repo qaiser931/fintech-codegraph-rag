@@ -46,6 +46,9 @@ session-local and do not change connected client data. `/dashboard` requires a r
 See [docs/STACKWISE_DEPLOY.md](docs/STACKWISE_DEPLOY.md) for Vercel settings, Postgres,
 private environment variables, first sign-in and GitHub webhooks.
 See [docs/STACKWISE_SCOPE.md](docs/STACKWISE_SCOPE.md) for the concept mapping and explicit limits.
+The dated [live verification record](docs/STACKWISE_LIVE_VERIFICATION.md) distinguishes
+observed production workflows, local regression checks and remaining coverage limits.
+Zero findings do not approve a review: both review screens display the recorded human decision.
 
 ```sh
 python -m venv .venv-stackwise

@@ -15,13 +15,13 @@ afterEach(() => {
   vi.unstubAllGlobals()
   window.history.replaceState(null, "", "/")
 })
-function mockDemo() {
+function mockDemo(data: typeof fixture = fixture) {
   window.history.replaceState(null, "", "/dashboard?demo=1")
   const fetch = vi.fn(async (url: string, options?: RequestInit) => {
     void options
     return new Response(
       JSON.stringify(
-        url.endsWith("session") ? { user: null, setup: {} } : fixture
+        url.endsWith("session") ? { user: null, setup: {} } : data
       ),
       { status: 200, headers: { "Content-Type": "application/json" } }
     )
@@ -36,6 +36,32 @@ async function navigate(name: string) {
     ).getByRole("button", { name: new RegExp(name) })
   )
 }
+
+test.each([
+  ["needs_review", "Needs review", false],
+  ["approved", "Approved", true],
+  ["request_changes", "Changes requested", false],
+] as const)(
+  "Review list and detail keep the human decision %s independent of finding count",
+  async (status, expected, keepFindings) => {
+    mockDemo({
+      ...fixture,
+      reviews: fixture.reviews.map((review) => ({ ...review, status })),
+      findings: keepFindings ? fixture.findings : [],
+    })
+    render(<StackwiseApp />)
+    await screen.findByRole("heading", { name: "Agency overview" })
+    await navigate("Code reviews")
+    const row = screen.getByRole("button", { name: /#128/ })
+    expect(within(row).getByText(expected)).toBeTruthy()
+    expect(within(row).queryByText("Reviewed")).toBeNull()
+    await userEvent.click(row)
+    await screen.findByRole("heading", {
+      name: /#128 Add client account endpoint/,
+    })
+    expect(screen.getByText(expected)).toBeTruthy()
+  }
+)
 
 test("Demo is clearly labeled and portfolio filters do not mix client findings", async () => {
   mockDemo()
