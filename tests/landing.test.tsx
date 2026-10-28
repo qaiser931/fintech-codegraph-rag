@@ -32,3 +32,21 @@ test("Human approval and truthful limits are visible on the landing", () => {
     screen.getByRole("link", { name: /View source/ }).getAttribute("href")
   ).toBe("https://github.com/qaiser931/fintech-codegraph-rag")
 })
+
+test("Landing page provides GitHub sign in buttons, target audience and working features", () => {
+  render(<HomePage />)
+  const githubLinks = screen.getAllByRole("link", { name: /GitHub/i })
+  expect(githubLinks.length).toBeGreaterThanOrEqual(2)
+  expect(githubLinks[0].getAttribute("href")).toBe("/api/auth/github")
+
+  expect(screen.getByText("Software agencies")).toBeTruthy()
+  expect(screen.getByText("Small software startups")).toBeTruthy()
+  expect(screen.getByText("Software development teams")).toBeTruthy()
+  expect(screen.getByText("Engineering & product managers")).toBeTruthy()
+
+  expect(screen.getByText("AI code review & reports")).toBeTruthy()
+  expect(screen.getByText("Workspace management")).toBeTruthy()
+  expect(screen.getByText("Multiple repository analysis")).toBeTruthy()
+  expect(screen.getByText("Ask Your Code")).toBeTruthy()
+})
+

@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "dev:ui": "next dev",
-    "test:python": "python -m pytest --confcutdir=tests/stackwise tests/stackwise -q -p no:cacheprovider"
+    "test:python": "python -m pytest --confcutdir=tests/stackwise tests/stackwise --basetemp=.pytest_temp -q -p no:cacheprovider"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

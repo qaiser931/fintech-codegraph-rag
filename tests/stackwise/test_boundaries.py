@@ -427,3 +427,66 @@ def test_explicit_ai_retry_retains_existing_human_decisions(client, monkeypatch)
         finding = db.get(Finding, finding_id)
         assert finding.status == 'dismissed' and finding.feedback == 'false_positive'
         assert len(list(db.scalars(select(Finding).where(Finding.review_id == review_id)))) == 1
+
+
+def test_github_oauth_flow_and_session(client, monkeypatch):
+    # 1. Unconfigured
+    res = client.get("/api/auth/github", follow_redirects=False)
+    assert res.status_code == 302
+    assert "github_not_configured" in res.headers["location"]
+
+    # 2. Configured redirect to GitHub
+    monkeypatch.setenv("GITHUB_CLIENT_ID", "gh-client-123")
+    monkeypatch.setenv("GITHUB_CLIENT_SECRET", "gh-secret-456")
+    res = client.get("/api/auth/github", follow_redirects=False)
+    assert res.status_code == 302
+    assert "https://github.com/login/oauth/authorize" in res.headers["location"]
+    assert "client_id=gh-client-123" in res.headers["location"]
+    assert "sw_oauth_state" in res.headers.get("set-cookie", "")
+
+    state_cookie = res.cookies.get("sw_oauth_state")
+    assert state_cookie
+
+    # 3. Callback with invalid state
+    bad_cb = client.get("/api/auth/github/callback?code=abc&state=badstate", follow_redirects=False)
+    assert bad_cb.status_code == 302
+    assert "invalid_oauth_state" in bad_cb.headers["location"]
+
+    # 4. Callback with error from github
+    err_cb = client.get("/api/auth/github/callback?error=access_denied&error_description=User+denied", follow_redirects=False)
+    assert err_cb.status_code == 302
+    assert "User%20denied" in err_cb.headers["location"]
+
+    # 5. Successful OAuth exchange
+    class MockTransport(httpx.BaseTransport):
+        def handle_request(self, req: httpx.Request) -> httpx.Response:
+            url = str(req.url)
+            if "login/oauth/access_token" in url:
+                return httpx.Response(200, json={"access_token": "gho_test_token_12345"})
+            if "api.github.com/user" in url:
+                return httpx.Response(200, json={"id": 99999, "login": "testdev", "name": "Test Developer"})
+            return httpx.Response(404)
+
+    mock_client = httpx.Client(transport=MockTransport())
+    monkeypatch.setattr(httpx, "Client", lambda *a, **kw: mock_client)
+
+    client.cookies.set("sw_oauth_state", state_cookie)
+    cb = client.get(f"/api/auth/github/callback?code=good_code&state={state_cookie}", follow_redirects=False)
+    assert cb.status_code == 302
+    assert "/dashboard?signed_in=1" in cb.headers["location"]
+    assert "sw_session" in cb.headers.get("set-cookie", "")
+
+    # 6. Verify session
+    session_res = client.get("/api/session").json()
+    assert session_res["user"] is not None
+    assert session_res["user"]["name"] == "Test Developer"
+    assert session_res["user"]["auth_method"] == "github"
+    assert session_res["user"]["role"] == "owner"
+
+    # 7. Logout
+    user = session_res["user"]
+    client.headers.update({"Origin": ORIGIN, "X-CSRF-Token": user["csrf"]})
+    logout_res = client.post("/api/logout")
+    assert logout_res.status_code == 200
+    assert client.get("/api/session").json()["user"] is None
+

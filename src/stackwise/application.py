@@ -6,19 +6,21 @@ import json
 import os
 import secrets
 import time
-from urllib.parse import parse_qsl, urlencode
+from urllib.parse import parse_qsl, quote, urlencode
 
+import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from .analysis import answer, retrieve
 from .demo import demo_data
-from .security import (COOKIE, check_origin, digest, identity, repository_name,
-                       seal, unseal, webhook_valid, workspace_access)
+from .security import (COOKIE, OAUTH_COOKIE, check_origin, digest, identity,
+                       repository_name, seal, unseal, webhook_valid,
+                       workspace_access)
 from .service import create_job, enqueue, job_view, process_job, report_for
 from .store import (AccessKey, Attempt, Audit, Finding, Job, Report, Repository,
                     Review, Session, Workspace, database, scoped, uid)
@@ -155,7 +157,8 @@ def demo():
 def session(request: Request):
     setup = {"database": bool(os.getenv("DATABASE_URL")), "owner_key": len(os.getenv("STACKWISE_ADMIN_TOKEN", "")) >= 32,
              "application_url": bool(os.getenv("STACKWISE_APP_URL")), "encryption": bool(os.getenv("STACKWISE_ENCRYPTION_KEY")),
-             "ai": bool(os.getenv("GROQ_API_KEY")), "queue": os.getenv("STACKWISE_QUEUE_ENABLED") == "1"}
+             "ai": bool(os.getenv("GROQ_API_KEY")), "queue": os.getenv("STACKWISE_QUEUE_ENABLED") == "1",
+             "github_oauth": bool(os.getenv("GITHUB_CLIENT_ID") and os.getenv("GITHUB_CLIENT_SECRET"))}
     if not request.cookies.get(COOKIE):
         return {"user": None, "setup": setup}
     try:
@@ -164,7 +167,147 @@ def session(request: Request):
         if exc.status_code == 401:
             return {"user": None, "setup": setup}
         raise
-    return {"user": {"name": user.name, "role": user.role, "workspace_id": user.workspace_id, "csrf": user.csrf}, "setup": setup}
+    auth_method = "github" if user.access_id.startswith("github:") else ("owner_key" if user.access_id == "owner" else "workspace_key")
+    return {"user": {"name": user.name, "role": user.role, "workspace_id": user.workspace_id, "csrf": user.csrf, "auth_method": auth_method}, "setup": setup}
+
+
+@app.get("/api/auth/github")
+def github_login(request: Request):
+    client_id = os.getenv("GITHUB_CLIENT_ID", "")
+    client_secret = os.getenv("GITHUB_CLIENT_SECRET", "")
+    if not client_id or not client_secret:
+        return RedirectResponse("/dashboard?auth_error=github_not_configured", status_code=302)
+    state = secrets.token_urlsafe(32)
+    app_url = os.getenv("STACKWISE_APP_URL", "").rstrip("/")
+    if not app_url:
+        app_url = str(request.base_url).rstrip("/")
+    redirect_uri = f"{app_url}/api/auth/github/callback"
+    params = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "scope": "read:user user:email",
+        "state": state,
+        "allow_signup": "true",
+    }
+    response = RedirectResponse(f"https://github.com/login/oauth/authorize?{urlencode(params)}", status_code=302)
+    response.set_cookie(
+        OAUTH_COOKIE,
+        state,
+        httponly=True,
+        secure=os.getenv("STACKWISE_LOCAL") != "1",
+        samesite="lax",
+        max_age=600,
+        path="/",
+    )
+    return response
+
+
+@app.get("/api/auth/github/callback")
+def github_callback(request: Request):
+    error = request.query_params.get("error")
+    error_description = request.query_params.get("error_description", "")
+    if error:
+        msg = error_description or error
+        return RedirectResponse(f"/dashboard?auth_error={quote(msg)}", status_code=302)
+
+    code = request.query_params.get("code")
+    state = request.query_params.get("state")
+    cookie_state = request.cookies.get(OAUTH_COOKIE, "")
+
+    if not code or not state or not cookie_state or not secrets.compare_digest(state, cookie_state):
+        return RedirectResponse("/dashboard?auth_error=invalid_oauth_state", status_code=302)
+
+    client_id = os.getenv("GITHUB_CLIENT_ID", "")
+    client_secret = os.getenv("GITHUB_CLIENT_SECRET", "")
+    if not client_id or not client_secret:
+        return RedirectResponse("/dashboard?auth_error=github_not_configured", status_code=302)
+
+    app_url = os.getenv("STACKWISE_APP_URL", "").rstrip("/")
+    if not app_url:
+        app_url = str(request.base_url).rstrip("/")
+    redirect_uri = f"{app_url}/api/auth/github/callback"
+
+    try:
+        with httpx.Client(timeout=15) as client:
+            token_resp = client.post(
+                "https://github.com/login/oauth/access_token",
+                headers={"Accept": "application/json", "User-Agent": "Stackwise/1.0"},
+                data={
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "code": code,
+                    "redirect_uri": redirect_uri,
+                },
+            )
+            token_data = token_resp.json() if token_resp.status_code == 200 else {}
+            access_token = token_data.get("access_token")
+            if not access_token:
+                desc = token_data.get("error_description") or token_data.get("error") or "token_exchange_failed"
+                return RedirectResponse(f"/dashboard?auth_error={quote(str(desc))}", status_code=302)
+
+            user_resp = client.get(
+                "https://api.github.com/user",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Accept": "application/vnd.github+json",
+                    "User-Agent": "Stackwise/1.0",
+                },
+            )
+            if user_resp.status_code != 200:
+                return RedirectResponse("/dashboard?auth_error=failed_to_fetch_profile", status_code=302)
+            user_info = user_resp.json()
+    except Exception:
+        return RedirectResponse("/dashboard?auth_error=github_service_error", status_code=302)
+
+    gh_login = user_info.get("login")
+    if not gh_login:
+        return RedirectResponse("/dashboard?auth_error=invalid_user_data", status_code=302)
+
+    gh_name = user_info.get("name") or gh_login
+    access_id = f"github:{gh_login}"
+
+    admin_users_str = os.getenv("GITHUB_ADMIN_USERS", "")
+    if admin_users_str.strip():
+        admin_users = [u.strip().lower() for u in admin_users_str.split(",") if u.strip()]
+        role = "owner" if gh_login.lower() in admin_users else "reviewer"
+    else:
+        role = "owner"
+
+    now = time.time()
+    token = secrets.token_urlsafe(32)
+    csrf = secrets.token_urlsafe(32)
+
+    with database()() as db:
+        db.execute(delete(Session).where(Session.expires < now))
+        db.add(Session(
+            id=digest(token),
+            access_id=access_id,
+            workspace_id=None,
+            role=role,
+            name=gh_name,
+            csrf=csrf,
+            expires=now + 8 * 3600,
+        ))
+        db.add(Audit(
+            workspace_id=None,
+            actor=gh_name,
+            action="signed_in_github",
+            subject=access_id,
+        ))
+        db.commit()
+
+    response = RedirectResponse("/dashboard?signed_in=1", status_code=302)
+    response.set_cookie(
+        COOKIE,
+        token,
+        httponly=True,
+        secure=os.getenv("STACKWISE_LOCAL") != "1",
+        samesite="lax",
+        max_age=8 * 3600,
+        path="/",
+    )
+    response.delete_cookie(OAUTH_COOKIE, path="/")
+    return response
 
 
 @app.post("/api/login")

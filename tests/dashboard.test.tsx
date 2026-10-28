@@ -165,6 +165,9 @@ test("Live unauthenticated sessions show sign-in, never a client portfolio", asy
   )
   render(<StackwiseApp />)
   await screen.findByLabelText("Access key")
+  expect(
+    screen.getByRole("link", { name: "Continue with GitHub" }).getAttribute("href")
+  ).toBe("/api/auth/github")
   expect(screen.queryByRole("heading", { name: "Agency overview" })).toBeNull()
   expect(screen.getByText("Deployment setup required")).toBeTruthy()
 })

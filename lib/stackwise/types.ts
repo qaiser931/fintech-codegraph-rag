@@ -137,5 +137,6 @@ export type User = {
   role: "owner" | "reviewer" | "viewer"
   workspace_id: string | null
   csrf: string
+  auth_method?: "github" | "owner_key" | "workspace_key"
 }
 export type Session = { user: User | null; setup: Record<string, boolean> }

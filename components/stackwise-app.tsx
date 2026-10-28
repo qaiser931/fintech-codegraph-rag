@@ -99,6 +99,23 @@ function Badge({
 }) {
   return <span className={`sw-badge sw-badge-${tone}`}>{children}</span>
 }
+function GitHubIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+      />
+    </svg>
+  )
+}
 function ReviewDecisionBadge({ status }: { status: string }) {
   const approved = status === "approved"
   const requested = status === "request_changes"
@@ -235,7 +252,17 @@ export default function StackwiseApp() {
   const [range, setRange] = useState("30")
   const [search, setSearch] = useState("")
   const [busy, setBusy] = useState("")
-  const [error, setError] = useState("")
+  const [error, setError] = useState(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search).get("auth_error")
+      if (p) {
+        return p === "github_not_configured"
+          ? "GitHub OAuth is not configured yet. Configure GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET in Vercel or your environment."
+          : `GitHub authentication could not be completed: ${p.replaceAll("_", " ")}`
+      }
+    }
+    return ""
+  })
   const [notice, setNotice] = useState("")
   const [menu, setMenu] = useState(false)
   const [modal, setModal] = useState<
@@ -283,14 +310,18 @@ export default function StackwiseApp() {
   }, [])
   useEffect(() => {
     const controller = new AbortController()
+    const searchParams = new URLSearchParams(window.location.search)
     api<Session>("session", { signal: controller.signal })
       .then(async (value) => {
         if (controller.signal.aborted) return
         setSession(value)
-        if (new URLSearchParams(window.location.search).get("demo") === "1") {
+        if (searchParams.get("demo") === "1") {
           await load(true)
           setMode("demo")
         } else if (value.user) {
+          if (searchParams.get("signed_in") === "1") {
+            window.history.replaceState(null, "", "/dashboard")
+          }
           await load()
           setMode("live")
         } else setMode("login")
@@ -572,9 +603,26 @@ export default function StackwiseApp() {
             with a clear view.
           </h1>
           <p>
-            Sign in with your agency or workspace access key. Client keys open
-            only their assigned workspace.
+            Sign in with GitHub for instant workspace access, or use your agency
+            or workspace access key.
           </p>
+          <div className="sw-oauth-section">
+            <a
+              href="/api/auth/github"
+              className="sw-btn sw-btn-dark sw-btn-oauth"
+              aria-label="Continue with GitHub"
+            >
+              <GitHubIcon size={19} />
+              Continue with GitHub
+            </a>
+            {session.setup && session.setup.github_oauth === false && (
+              <p className="sw-oauth-hint">
+                <LockKeyhole size={12} />
+                Requires GITHUB_CLIENT_ID &amp; GITHUB_CLIENT_SECRET. Configure in Vercel or use an access key below.
+              </p>
+            )}
+          </div>
+          <div className="sw-login-divider">OR SIGN IN WITH ACCESS KEY</div>
           <form
             onSubmit={(e) => {
               e.preventDefault()
@@ -1704,7 +1752,7 @@ export default function StackwiseApp() {
             <>
               <Panel
                 title="Agency access"
-                hint="Access-key sessions for the first version. SSO and billing are not implemented."
+                hint="Sign in via GitHub OAuth or access keys. SSO and billing are not implemented."
               >
                 <div className="sw-settings-row">
                   <div>
@@ -1712,7 +1760,7 @@ export default function StackwiseApp() {
                     <p>
                       {isDemo
                         ? "Explore sample data without connecting an account."
-                        : `${label(user?.role)} · Sessions expire after 8 hours.`}
+                        : `${user?.auth_method === "github" ? "GitHub OAuth session" : label(user?.role)} · Sessions expire after 8 hours.`}
                     </p>
                   </div>
                   <button

@@ -18,6 +18,7 @@ from sqlalchemy import select
 from .store import AccessKey, Session, database
 
 COOKIE = "sw_session"
+OAUTH_COOKIE = "sw_oauth_state"
 
 
 def digest(text):
@@ -98,6 +99,8 @@ def identity(request: Request, *, write=False, owner=False, allow_viewer=False):
             if session.workspace_id != digest(os.getenv("STACKWISE_ADMIN_TOKEN", "")):
                 raise HTTPException(401, "Your agency access key changed. Sign in again.")
             workspace_id = None
+        elif session.access_id.startswith("github:"):
+            workspace_id = session.workspace_id
         else:
             key = db.get(AccessKey, session.access_id)
             if not key or key.revoked:

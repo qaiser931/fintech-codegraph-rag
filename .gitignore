@@ -17,6 +17,7 @@ build/
 dist/
 coverage/
 .pytest_cache/
+.pytest_temp/
 __pycache__/
 *.py[cod]
 *.tsbuildinfo
