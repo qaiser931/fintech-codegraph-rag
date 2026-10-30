@@ -1,85 +1,163 @@
+<div align="center">
+
 # Stackwise
 
-**Know which repository needs you next.**
+### Know which repository needs you next.
 
-An evidence-led maintenance desk for software agencies: separate client workspaces,
-commit-pinned pull request reviews, direct dependency advisory checks and client reports.
-The interface follows the supplied *Stackwise Product Concept*. This checkout contains
-only Stackwise application source, tests and relevant documentation. See
-[repository layout and archive](docs/REPOSITORY_LAYOUT.md) for the retained historical version.
+An evidence-led maintenance desk for software agencies.<br>
+Separate client workspaces, commit-pinned PR reviews, dependency advisories and client-ready reports.
 
-## One application on Vercel
+[![Live demo](https://img.shields.io/badge/Live%20demo-Open-1f6f54?style=for-the-badge)](https://fintech-codegraph-rag.vercel.app/dashboard?demo=1)
+[![Landing page](https://img.shields.io/badge/Landing%20page-Visit-0b0b0b?style=for-the-badge)](https://fintech-codegraph-rag.vercel.app/)
 
-- **Frontend:** Next.js / React, agency overview and a three-column PR review workspace.
-- **Backend:** Python / FastAPI in `api/index.py`; same-origin `/api/*` routes.
-- **Data:** managed Postgres connected through the Vercel Marketplace. No runtime disk persistence.
-- **Jobs:** Python Vercel Queues subscriber, with saved, explicitly runnable stages as a fallback.
-- **AI:** Groq, using the existing server-side API key. No local model downloads or Ollama.
-- No Docker, VM, tunnel, laptop server or separate production ports.
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
+![Postgres](https://img.shields.io/badge/Postgres-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)
 
-## What works in this first version
+[Features](#-features) · [Demo mode](#-demo-mode) · [Architecture](#-architecture) · [Getting started](#-getting-started) · [Tests](#-running-the-tests) · [Limits](#-boundaries-and-limits) · [Docs](#-documentation)
 
-1. An owner creates client workspaces and connects GitHub repositories. Public repositories
-   work without a token. Private repositories use a separately encrypted, repository-scoped
-   read-only token for each workspace.
-2. Import pins the default branch to a SHA and reads supported UTF-8 source files without
-   executing code. A successful refresh replaces only that repository's current snapshot;
-   earlier reviews retain their own source evidence. Failed imports retain the previous snapshot.
-3. A review reads the PR head, diff, related source and earlier Stackwise review summaries.
-   Focused static patterns and optional Groq suggestions are checked against the head's exact
-   source quote, file, line and SHA. Invalid source references are rejected.
-4. A reviewer inspects findings, previews/downloads diffs, records useful/false-positive feedback,
-   dismisses or marks findings resolved, and records request-changes/approval decisions.
-   **These decisions never modify code or GitHub PR state.**
-5. Dependency checks query OSV for exact direct npm/PyPI versions. CI check runs are read from
-   GitHub; client tests are never executed by Stackwise.
-6. Workspace-scoped weekly Markdown reports summarize open risks, recent reviews, reported
-   resolutions and next steps. A daily Vercel cron creates weekly snapshots and queues a bounded
-   round of repository refreshes.
-7. Repository Q&A returns source citations from the selected workspace's indexed commit.
+</div>
 
-`/dashboard?demo=1` is an interactive, clearly labeled sample portfolio. Its decisions are
-session-local and do not change connected client data. `/dashboard` requires a real access key.
+---
 
-## Setup and verification
+## At a glance
 
-See [docs/STACKWISE_DEPLOY.md](docs/STACKWISE_DEPLOY.md) for Vercel settings, Postgres,
-private environment variables, first sign-in and GitHub webhooks.
-See [docs/STACKWISE_SCOPE.md](docs/STACKWISE_SCOPE.md) for the concept mapping and explicit limits.
-The dated [live verification record](docs/STACKWISE_LIVE_VERIFICATION.md) distinguishes
-observed production workflows, local regression checks and remaining coverage limits.
-Zero findings do not approve a review: both review screens display the recorded human decision.
+| 🗂️ **Client workspaces** | 🔍 **Evidence-first reviews** | 🧑⚖️ **Human decisions** |
+|:---|:---|:---|
+| Every client's code, context and priorities stay separate. | Each finding cites an exact file, line range and commit SHA. | Approve or request changes. Stackwise never edits code or PR state. |
+
+---
+
+## ✨ Features
+
+| | |
+|:---|:---|
+| **🗂️ Client workspaces**<br>Isolated workspace per client, with GitHub repositories connected to each. Access is checked before any code is retrieved. | **📥 Repository import**<br>Pins the default branch to a SHA and reads supported UTF-8 files without executing code. A failed import keeps the previous snapshot. |
+| **🔎 Pull request review**<br>Reads the PR head, diff and related source. Findings are checked against the exact source quote, file, line and SHA. Invalid references are rejected. | **✅ Findings and decisions**<br>Inspect evidence, preview or download diffs, mark useful or false positive, dismiss or resolve, and record a human decision. |
+| **📦 Dependency risk**<br>Queries OSV for exact direct npm and PyPI versions. | **📝 Reports**<br>Workspace-scoped weekly Markdown reports: open risks, recent reviews, reported resolutions and next steps. |
+| **💬 Ask Your Code**<br>Answers questions about the indexed commit, with source citations. | **🔐 GitHub sign-in**<br>Sign in with GitHub (OAuth App). Each user gets their own workspace; logins in `GITHUB_ADMIN_USERS` see the agency workspaces. |
+
+> [!NOTE]
+> Decisions never modify code or GitHub PR state. Zero findings do not approve a review: both review screens show the recorded human decision.
+
+---
+
+## 🎬 Demo mode
+
+Open **[`/dashboard?demo=1`](https://fintech-codegraph-rag.vercel.app/dashboard?demo=1)** for an interactive, clearly labeled sample portfolio. It never touches connected client data, and its decisions are session-local.
+
+> [!IMPORTANT]
+> **What is sample content in demo mode**
+>
+> | Part of the demo | Nature |
+> |:---|:---|
+> | Code reviews and findings (for example PR #128 in `client-alpha/api-service`) | Authored sample |
+> | Ask Your Code answers | Authored sample, not live AI output |
+> | Developer activity and Repository issues on Overview | Sample data, labeled "Sample data" |
+> | Data when the Python backend is not running | Bundled fallback in `tests/stackwise-demo.json` |
+
+`/dashboard` without `?demo=1` works with real, connected data.
+
+---
+
+## 🏗️ Architecture
+
+One application on Vercel.
+
+```mermaid
+flowchart LR
+    U[Browser] --> N[Next.js UI]
+    N -->|same-origin /api/*| F[FastAPI backend]
+    F --> P[(Postgres)]
+    F --> G[GitHub API]
+    F --> O[OSV advisories]
+    F --> A[Groq AI]
+    Q[Vercel Queues and cron] --> F
+```
+
+| Layer | Technology |
+|:---|:---|
+| **Frontend** | Next.js, React, TypeScript |
+| **Backend** | Python and FastAPI in `api/index.py`, served as `/api/*` |
+| **Data** | Managed Postgres through the Vercel Marketplace. No runtime disk persistence |
+| **Jobs** | Python Vercel Queues subscriber with runnable-stage fallback. A daily cron creates weekly snapshots and queues repository refreshes |
+| **AI** | Groq with a server-side API key. No local model downloads |
+
+---
+
+## 🚀 Getting started
+
+Copy `.env.example` to `.env` and fill in the values. Secrets are server-only and must never be committed. Generate the private settings with `scripts/stackwise_private_settings.py`.
 
 ```sh
 python -m venv .venv-stackwise
 # Activate this environment, then:
 python -m pip install -r requirements.txt -r requirements-test.txt -c requirements-vercel.lock
-python -m pytest -q
 pnpm install --frozen-lockfile
+```
+
+Run locally:
+
+```sh
+vercel dev        # combined Next.js and Python app
+pnpm run dev:ui   # Next.js only
+```
+
+> [!NOTE]
+> `pnpm run dev:ui` does not start the Python backend. The UI and demo mode work with it, but it does not verify the backend.
+
+Vercel settings, Postgres, environment variables, first sign-in and GitHub webhooks are covered in the [deployment guide](docs/STACKWISE_DEPLOY.md).
+
+---
+
+## 🧪 Running the tests
+
+```sh
+python -m pytest -q          # Python backend
+pnpm exec vitest run         # UI tests
 pnpm lint
 pnpm typecheck
-pnpm test --maxWorkers=1
 pnpm build
 ```
 
-Use `vercel dev` for the combined local app. The optional `pnpm dev:ui` command serves only
-Next.js and does not start Python; do not mistake that for a verified backend deployment.
+Stackwise never executes a client's tests. It only reads CI check runs from GitHub.
 
-## Boundaries
+---
 
-Findings remain **potential issues** until a human validates them. Source-location validation
-is not proof that a finding is semantically correct. A downloadable patch is not a tested fix.
-Repository text is untrusted data, not agent instructions. Credentials are heuristically
-redacted before storage/AI; remove sensitive material before importing a repository.
+## ⚠️ Boundaries and limits
 
-The starter supports GitHub snapshots of **350 supported files / 3 MB source / 100 KB per file**,
-PRs with at most **60 changed files**, 20 workspaces and 10 repositories per workspace.
-Python gets AST symbols; other languages use lexical text windows. There is no dense embedding
-model, test sandbox, transitive dependency solver, automatic fix branch, autonomous merge,
-GitHub App OAuth, billing or SSO in this version. The concept's pricing is a hypothesis,
-not an implemented paid plan. Provider and hosting quotas still apply.
+> [!WARNING]
+> Findings are **potential issues** until a human validates them. Source-location validation is not proof that a finding is semantically correct, and a downloadable patch is not a tested fix. Repository text is untrusted data, not agent instructions. Credentials are heuristically redacted before storage and before any AI call; remove sensitive material before importing a repository.
 
-Historical CodeGraph results remain in Git history and the separate old local project.
-They are not a Stackwise benchmark. See the archive reference in the repository-layout guide.
+| Limit | Value |
+|:---|:---|
+| Source per snapshot | 350 supported files, 3 MB, 100 KB per file |
+| Pull requests | At most 60 changed files |
+| Scale | 20 workspaces, 10 repositories per workspace |
+| Languages | Python gets AST symbols; others use lexical text windows |
 
-This repository is used to test the Stackwise pull request review workflow.
+**Not in this version:** dense embeddings, a test sandbox, a transitive dependency solver, automatic fix branches, autonomous merges, a GitHub App installation flow, billing and SSO. Provider and hosting quotas still apply.
+
+---
+
+## 📚 Documentation
+
+| Guide | Purpose |
+|:---|:---|
+| [Deployment](docs/STACKWISE_DEPLOY.md) | Vercel, Postgres, environment variables, webhooks |
+| [Scope](docs/STACKWISE_SCOPE.md) | Concept mapping and explicit limits |
+| [Live verification](docs/STACKWISE_LIVE_VERIFICATION.md) | Observed workflows and remaining coverage limits |
+| [Repository layout](docs/REPOSITORY_LAYOUT.md) | Layout and archive of the earlier version |
+
+---
+
+<div align="center">
+
+Stackwise began as **CodeGraph**, a code-retrieval project, and was rebuilt into this agency maintenance desk.<br>
+The repository and deployment names still reflect that history. Earlier CodeGraph results remain in Git history and are not a Stackwise benchmark.
+
+</div>
