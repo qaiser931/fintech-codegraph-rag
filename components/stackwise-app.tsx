@@ -270,9 +270,9 @@ function Dialog({
 }
 
 function workspaceSubtitle(id: string) {
-  if (id === "demo-alpha") return "Client Alpha · Fintech Retainer (Active PR review & TLS finding)"
-  if (id === "demo-beta") return "Client Beta · E-commerce Retainer (Isolated web app, zero shared state)"
-  if (id === "demo-internal") return "Internal tools · Agency Infrastructure (Studio CLI)"
+  if (id === "demo-alpha") return "Apex Fintech Payments · Active retainer (Payment APIs & TLS review)"
+  if (id === "demo-beta") return "Nordic Retail Store · Isolated retainer (Next.js storefront, 0 shared state)"
+  if (id === "demo-internal") return "Studio Internal Tools · Agency infrastructure (CLI & dev tools)"
   return ""
 }
 
@@ -285,7 +285,7 @@ const DEMO_DEVELOPER_ACTIVITY = [
     prsMerged: 12,
     lastMerged: "PR #128 Add client account endpoint",
     lastMergedDate: "Yesterday",
-    workspace: "Client Alpha",
+    workspace: "Apex Fintech (Client Alpha)",
   },
   {
     name: "Sarah Chen",
@@ -295,7 +295,7 @@ const DEMO_DEVELOPER_ACTIVITY = [
     prsMerged: 8,
     lastMerged: "PR #124 Configure TLS ingress certificate",
     lastMergedDate: "3 days ago",
-    workspace: "Client Alpha",
+    workspace: "Apex Fintech (Client Alpha)",
   },
   {
     name: "Marcus Vance",
@@ -305,7 +305,7 @@ const DEMO_DEVELOPER_ACTIVITY = [
     prsMerged: 9,
     lastMerged: "PR #119 Implement workspace auth boundary checks",
     lastMergedDate: "5 days ago",
-    workspace: "Client Beta",
+    workspace: "Nordic Retail (Client Beta)",
   },
 ]
 
@@ -403,53 +403,159 @@ export default function StackwiseApp() {
     }
   }, [mode, tourStep])
 
+  useEffect(() => {
+    if (tourStep !== null && typeof document !== "undefined") {
+      const el = document.querySelector(".sw-tour-highlight")
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" })
+      }
+    }
+  }, [tourStep, view, modal, reviewId])
+
   const tourSteps = [
     {
       step: 1,
-      tag: "Agency overview",
-      title: "Welcome to Acme Studio",
-      body: "Acme Studio is a sample engineering agency managing multiple client retainers. Stackwise keeps every client's codebase, reviews, and secrets completely isolated.",
-      hint: "Inspect the agency profile in the sidebar to understand the agency-level view.",
-      actionText: "Next: Client Workspaces",
-      action: () => setTourStep(1),
+      tag: "WELCOME TO STACKWISE",
+      title: "Welcome to Stackwise",
+      body: "Stackwise is an evidence-led code maintenance desk designed for software agencies managing multiple client retainers. It gives your team clarity on which repository needs attention next.",
+      hint: "👉 Click 'Start guided tour' to explore the agency workspace and client retainers.",
+      actionText: "Start guided tour",
+      action: () => {
+        setTourStep(1)
+        setView("Overview")
+      },
     },
     {
       step: 2,
-      tag: "Workspace selection",
-      title: "Client Alpha vs. Client Beta",
-      body: "Client Alpha runs an active API service with security findings. Client Beta is an isolated e-commerce workspace. Switching workspaces strictly isolates all code, findings, and metrics.",
-      hint: "Use the workspace filter or click a workspace card to switch contexts.",
-      actionText: "Focus Client Alpha",
+      tag: "WORKSPACE ISOLATION",
+      title: "Client Workspaces",
+      body: "Agencies maintain code for multiple clients at once. Stackwise keeps every client isolated: Apex Fintech (Client Alpha) manages high-security payment APIs, while Nordic Retail (Client Beta) runs an e-commerce storefront. Code, findings, and credentials never cross client boundaries.",
+      hint: "👉 Click 'Focus Apex Fintech' or choose a workspace from the filter dropdown.",
+      actionText: "Focus Apex Fintech",
       action: () => {
         changeWorkspace("demo-alpha")
         setView("Workspaces")
+        setTourStep(2)
       },
     },
     {
       step: 3,
-      tag: "Repository import",
-      title: "Repository Import (Simulated)",
-      body: "In production, you import client repositories with fine-grained GitHub tokens. In this interactive demo, repository connections and indexing are simulated to keep demo sessions safe.",
-      hint: "Open the connect dialog to see the repository configuration form.",
-      actionText: "Preview Connect Dialog",
+      tag: "REPOSITORIES",
+      title: "Connected Repositories",
+      body: "Inspect connected repositories like client-alpha/api-service. Stackwise pins repository snapshots to exact Git commit SHAs, indexing only supported source files so all reviews and findings are deterministic.",
+      hint: "👉 Click 'Preview Import Dialog' to see how new repositories are connected.",
+      actionText: "Preview Import Dialog",
       action: () => {
+        changeWorkspace("demo-alpha")
         setView("Workspaces")
         openModal("repository")
+        setTourStep(3)
       },
     },
     {
       step: 4,
-      tag: "Code review & decision",
-      title: "Human-in-the-Loop Review",
-      body: "Every AI finding is linked to exact source evidence. Inspect pull request #128 on Client Alpha to review the TLS patch preview, then record an approved or changes-requested decision.",
-      hint: "Explore PR #128 in the Code Reviews desk.",
-      actionText: "Open PR #128",
+      tag: "IMPORT GITHUB REPOSITORY",
+      title: "Import GitHub Repository",
+      body: "Agencies connect client repositories using fine-grained Personal Access Tokens or public repo URLs. In this interactive demo, repository setup and indexing are safely simulated so you can test without credentials.",
+      hint: "👉 Click 'Inspect PR #128' to see an active code review.",
+      actionText: "Inspect PR #128",
       action: () => {
+        closeModal()
         setView("Code reviews")
         openReview("demo-review")
+        setTourStep(4)
+      },
+    },
+    {
+      step: 5,
+      tag: "CODE REVIEW",
+      title: "Human-in-the-Loop PR Review",
+      body: "PR #128 ('Add client account endpoint') was scanned against repository rules. Crucially, Stackwise never auto-merges or runs untrusted scripts: engineers review evidence and record an explicit 'Approve' or 'Request changes' decision.",
+      hint: "👉 Click 'Inspect TLS Finding' to jump straight into the security finding.",
+      actionText: "Inspect TLS Finding",
+      action: () => {
+        setView("Code reviews")
+        openReview("demo-review", "demo-f2")
+        setTourStep(5)
+      },
+    },
+    {
+      step: 6,
+      tag: "FINDINGS & EVIDENCE",
+      title: "Source Evidence & Patch Previews",
+      body: "Every finding links to exact file line numbers. For the finding 'TLS certificate verification is disabled' (auth/routes.py:11-17), inspect the literal source file, view the diff, and preview the generated patch before making your call.",
+      hint: "👉 Click 'Next: Ask Your Code' to see natural language code questions.",
+      actionText: "Next: Ask Codebase",
+      action: () => {
+        setReviewId("")
+        setReview(null)
+        changeWorkspace("demo-alpha")
+        setView("Workspaces")
+        setTourStep(6)
+      },
+    },
+    {
+      step: 7,
+      tag: "ASK YOUR CODE",
+      title: "Ask Your Codebase (CodeRAG)",
+      body: "Engineers and project managers can ask technical questions in natural language. Stackwise performs lexical CodeRAG across the indexed snapshot to return answers backed by exact source citations, without executing code.",
+      hint: "👉 Click 'Ask Sample Question' or type your own question.",
+      actionText: "Ask Sample Question",
+      action: () => {
+        setQuestion("How is account ownership checked?")
       },
     },
   ]
+
+  const handleTourNext = () => {
+    const next = (tourStep ?? -1) + 1
+    if (modal) closeModal()
+    setTourStep(next)
+    if (next === 1) {
+      setView("Overview")
+    } else if (next === 2) {
+      changeWorkspace("demo-alpha")
+      setView("Workspaces")
+    } else if (next === 3) {
+      changeWorkspace("demo-alpha")
+      setView("Workspaces")
+      openModal("repository")
+    } else if (next === 4) {
+      closeModal()
+      setView("Code reviews")
+      openReview("demo-review")
+    } else if (next === 5) {
+      setView("Code reviews")
+      openReview("demo-review", "demo-f2")
+    } else if (next === 6) {
+      setReviewId("")
+      setReview(null)
+      changeWorkspace("demo-alpha")
+      setView("Workspaces")
+    }
+  }
+
+  const handleTourBack = () => {
+    const prev = Math.max(0, (tourStep || 0) - 1)
+    if (modal) closeModal()
+    setTourStep(prev)
+    if (prev === 0 || prev === 1) {
+      setView("Overview")
+    } else if (prev === 2) {
+      changeWorkspace("demo-alpha")
+      setView("Workspaces")
+    } else if (prev === 3) {
+      changeWorkspace("demo-alpha")
+      setView("Workspaces")
+      openModal("repository")
+    } else if (prev === 4) {
+      setView("Code reviews")
+      openReview("demo-review")
+    } else if (prev === 5) {
+      setView("Code reviews")
+      openReview("demo-review", "demo-f2")
+    }
+  }
 
   const user = session.user
   const isDemo = mode === "demo",
@@ -902,7 +1008,7 @@ export default function StackwiseApp() {
               key={n.name}
               id={n.name === "Code reviews" ? "sw-tour-nav-reviews" : undefined}
               onClick={() => navigate(n.name)}
-              className={`${view === n.name ? "active" : ""} ${isDemo && tourStep === 3 && n.name === "Code reviews" ? "sw-tour-highlight" : ""}`}
+              className={`${view === n.name ? "active" : ""} ${isDemo && (tourStep === 4 || tourStep === 5) && view !== "Code reviews" && n.name === "Code reviews" ? "sw-tour-highlight" : ""}`}
               aria-current={view === n.name ? "page" : undefined}
             >
               <n.icon size={17} strokeWidth={1.6} />
@@ -1541,7 +1647,7 @@ export default function StackwiseApp() {
                   (owner || isDemo) && (
                     <button
                       id="sw-tour-repo-connect"
-                      className={`sw-btn sw-btn-outline sw-btn-small ${isDemo && tourStep === 2 ? "sw-tour-highlight" : ""}`}
+                      className={`sw-btn sw-btn-outline sw-btn-small ${isDemo && tourStep === 3 ? "sw-tour-highlight" : ""}`}
                       disabled={!data.workspaces.length}
                       onClick={() => openModal("repository")}
                     >
@@ -1551,7 +1657,10 @@ export default function StackwiseApp() {
                   )
                 }
               >
-                <div className="sw-repo-list">
+                <div
+                  id="sw-tour-repo-list"
+                  className={`sw-repo-list ${isDemo && tourStep === 2 ? "sw-tour-highlight" : ""}`}
+                >
                   {repos.map((r) => (
                     <article key={r.id}>
                       <div className="sw-repo-icon">
@@ -1634,81 +1743,86 @@ export default function StackwiseApp() {
                   title="Ask your codebase"
                   hint="Answers use source citations from this repository’s indexed commit. Lexical CodeRAG; no scripts are executed."
                 >
-                  <form
-                    className="sw-ask-form"
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      setAnswer(null)
-                      void perform("Finding relevant code…", async () => {
-                        const version = contextVersion.current
-                        if (isDemo) {
-                          setAnswer({
-                            answer:
-                              "In the sample account route, get_account passes the request’s user_id to fetch_account. The shown route does not perform an ownership check. Inspect auth/routes.py lines 7–9; other upstream controls are not demonstrated.",
-                            status: "authored_demo",
-                            citations: data.findings
-                              .slice(0, 1)
-                              .map((f) => f.evidence),
-                          })
-                        } else {
-                          const response = await mutate<{
-                            answer: string
-                            status: string
-                            citations: Evidence[]
-                          }>(`repositories/${askRepo || repos[0].id}/ask`, {
-                            question,
-                          })
-                          if (version === contextVersion.current)
-                            setAnswer(response)
-                        }
-                      })
-                    }}
+                  <div
+                    id="sw-tour-ask-code"
+                    className={isDemo && tourStep === 6 ? "sw-tour-highlight" : ""}
                   >
-                    <select
-                      aria-label="Repository to ask"
-                      value={askRepo || repos[0].id}
-                      onChange={(e) => {
-                        contextVersion.current++
-                        setAskRepo(e.target.value)
+                    <form
+                      className="sw-ask-form"
+                      onSubmit={(e) => {
+                        e.preventDefault()
                         setAnswer(null)
-                        setQuestion("")
+                        void perform("Finding relevant code…", async () => {
+                          const version = contextVersion.current
+                          if (isDemo) {
+                            setAnswer({
+                              answer:
+                                "In the sample account route, get_account passes the request’s user_id to fetch_account. The shown route does not perform an ownership check. Inspect auth/routes.py lines 7–9; other upstream controls are not demonstrated.",
+                              status: "authored_demo",
+                              citations: data.findings
+                                .slice(0, 1)
+                                .map((f) => f.evidence),
+                            })
+                          } else {
+                            const response = await mutate<{
+                              answer: string
+                              status: string
+                              citations: Evidence[]
+                            }>(`repositories/${askRepo || repos[0].id}/ask`, {
+                              question,
+                            })
+                            if (version === contextVersion.current)
+                              setAnswer(response)
+                          }
+                        })
                       }}
                     >
-                      {repos.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.full_name}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      aria-label="Codebase question"
-                      value={question}
-                      onChange={(e) => {
-                        contextVersion.current++
-                        setQuestion(e.target.value)
-                        setAnswer(null)
-                      }}
-                      minLength={3}
-                      maxLength={1500}
-                      required
-                      placeholder="How is account ownership checked?"
-                    />
-                    <button
-                      className="sw-btn sw-btn-green"
-                      disabled={!!busy || !canWrite}
-                    >
-                      Ask code <ArrowRight size={15} />
-                    </button>
-                  </form>
-                  {answer && (
-                    <div className="sw-answer">
-                      <Badge>{label(answer.status)}</Badge>
-                      <p>{answer.answer}</p>
-                      {answer.citations.map((e, i) => (
-                        <EvidenceBlock evidence={e} key={i} />
-                      ))}
-                    </div>
-                  )}
+                      <select
+                        aria-label="Repository to ask"
+                        value={askRepo || repos[0].id}
+                        onChange={(e) => {
+                          contextVersion.current++
+                          setAskRepo(e.target.value)
+                          setAnswer(null)
+                          setQuestion("")
+                        }}
+                      >
+                        {repos.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.full_name}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        aria-label="Codebase question"
+                        value={question}
+                        onChange={(e) => {
+                          contextVersion.current++
+                          setQuestion(e.target.value)
+                          setAnswer(null)
+                        }}
+                        minLength={3}
+                        maxLength={1500}
+                        required
+                        placeholder="How is account ownership checked?"
+                      />
+                      <button
+                        className="sw-btn sw-btn-green"
+                        disabled={!!busy || !canWrite}
+                      >
+                        Ask code <ArrowRight size={15} />
+                      </button>
+                    </form>
+                    {answer && (
+                      <div className="sw-answer">
+                        <Badge>{label(answer.status)}</Badge>
+                        <p>{answer.answer}</p>
+                        {answer.citations.map((e, i) => (
+                          <EvidenceBlock evidence={e} key={i} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </Panel>
               )}
             </>
@@ -1754,6 +1868,7 @@ export default function StackwiseApp() {
                     canWrite={canWrite}
                     busy={!!busy}
                     demo={isDemo}
+                    tourStep={tourStep}
                     onDecision={updateFinding}
                     onReviewDecision={reviewDecision}
                     onRetryAI={() =>
@@ -1788,7 +1903,12 @@ export default function StackwiseApp() {
                     ),
                       active = fs.filter((f) => f.status === "open")
                     return (
-                      <button key={r.id} onClick={() => openReview(r.id)}>
+                      <button
+                        key={r.id}
+                        id="sw-tour-review-card"
+                        className={isDemo && (tourStep === 4 || tourStep === 5) ? "sw-tour-highlight" : ""}
+                        onClick={() => openReview(r.id)}
+                      >
                         <span className="sw-review-glyph">
                           <GitPullRequest size={21} />
                         </span>
@@ -2525,6 +2645,15 @@ export default function StackwiseApp() {
           </form>
         </Dialog>
       )}
+      {isDemo && tourStep !== null && !modal && (
+        <div
+          className="sw-tour-backdrop"
+          onClick={() => {
+            setTourStep(null)
+          }}
+          aria-hidden="true"
+        />
+      )}
       {isDemo && tourStep !== null && (
         <div
           className={`sw-tour-card ${modal ? "sw-tour-card-dialog-active" : ""}`}
@@ -2559,11 +2688,54 @@ export default function StackwiseApp() {
             </button>
           </div>
           <div className="sw-tour-body">
-            <h3>{tourSteps[tourStep].title}</h3>
-            <p>{tourSteps[tourStep].body}</p>
+            {tourStep === 0 ? (
+              <div className="sw-tour-welcome">
+                <div className="sw-tour-welcome-badge">
+                  <Sparkles size={13} />
+                  <span>AGENCY MAINTENANCE DESK</span>
+                </div>
+                <h3>{tourSteps[tourStep].title}</h3>
+                <p className="sw-tour-lead">{tourSteps[tourStep].body}</p>
+                <div className="sw-tour-features">
+                  <div className="sw-tour-feature">
+                    <span className="sw-tour-feature-bullet">1</span>
+                    <div>
+                      <strong>Client Retainer Isolation</strong>
+                      <small>
+                        Separate workspaces for Apex Fintech & Nordic Retail with isolated credentials.
+                      </small>
+                    </div>
+                  </div>
+                  <div className="sw-tour-feature">
+                    <span className="sw-tour-feature-bullet">2</span>
+                    <div>
+                      <strong>Commit-Pinned Code Reviews</strong>
+                      <small>
+                        Deterministic pull request reviews with line citations and patch previews.
+                      </small>
+                    </div>
+                  </div>
+                  <div className="sw-tour-feature">
+                    <span className="sw-tour-feature-bullet">3</span>
+                    <div>
+                      <strong>Ask Your Codebase</strong>
+                      <small>
+                        CodeRAG semantic search returning exact file references without code execution.
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="sw-tour-step-tag">{tourSteps[tourStep].tag}</div>
+                <h3>{tourSteps[tourStep].title}</h3>
+                <p>{tourSteps[tourStep].body}</p>
+              </>
+            )}
             {tourSteps[tourStep].hint && (
-              <div className="sw-tour-hint">
-                <Info size={13} />
+              <div className="sw-tour-hint" role="status">
+                <Info size={14} />
                 <span>{tourSteps[tourStep].hint}</span>
               </div>
             )}
@@ -2595,10 +2767,7 @@ export default function StackwiseApp() {
                 type="button"
                 className="sw-btn sw-btn-outline sw-btn-small"
                 disabled={tourStep === 0}
-                onClick={() => {
-                  if (modal) closeModal()
-                  setTourStep((s) => Math.max(0, (s || 0) - 1))
-                }}
+                onClick={handleTourBack}
               >
                 <ArrowLeft size={13} /> Back
               </button>
@@ -2606,15 +2775,9 @@ export default function StackwiseApp() {
                 <button
                   type="button"
                   className="sw-btn sw-btn-green sw-btn-small"
-                  onClick={() => {
-                    const next = tourStep + 1
-                    if (modal) closeModal()
-                    setTourStep(next)
-                    if (next === 1 || next === 2) setView("Workspaces")
-                    if (next === 3) setView("Code reviews")
-                  }}
+                  onClick={handleTourNext}
                 >
-                  Next <ArrowRight size={13} />
+                  {tourStep === 0 ? "Start tour" : "Next"} <ArrowRight size={13} />
                 </button>
               ) : (
                 <button
@@ -2758,6 +2921,7 @@ function ReviewDesk({
   canWrite,
   busy,
   demo,
+  tourStep,
   onDecision,
   onReviewDecision,
   onRetryAI,
@@ -2770,6 +2934,7 @@ function ReviewDesk({
   canWrite: boolean
   busy: boolean
   demo: boolean
+  tourStep?: number | null
   onDecision: (
     f: Finding,
     status: string,
@@ -2803,7 +2968,10 @@ function ReviewDesk({
   }
   return (
     <>
-      <div className="sw-review-header">
+      <div
+        id="sw-tour-review-header"
+        className={`sw-review-header ${demo && tourStep === 4 ? "sw-tour-highlight" : ""}`}
+      >
         <div>
           <span className="sw-eyebrow">
             {workspaceName} / {repoName}
@@ -2877,22 +3045,28 @@ function ReviewDesk({
               <small>Tests not executed by Stackwise</small>
             </span>
           </div>
-          <h3>
-            FINDINGS <span>{findings.length}</span>
-          </h3>
-          {findings.map((f) => (
-            <button
-              key={f.id}
-              className={`sw-finding-nav ${f.id === findingId ? "active" : ""}`}
-              onClick={() => selectFinding(f)}
-            >
-              <span className={`sw-severity-dot ${f.severity}`} />
-              <span>
-                {f.title}
-                <small>{label(f.status)}</small>
-              </span>
-            </button>
-          ))}
+          <div
+            id="sw-tour-findings"
+            className={`sw-findings-group ${demo && tourStep === 5 ? "sw-tour-highlight" : ""}`}
+          >
+            <h3>
+              FINDINGS <span>{findings.length}</span>
+            </h3>
+            {findings.map((f) => (
+              <button
+                key={f.id}
+                id={f.id === "demo-f2" ? "sw-tour-finding" : undefined}
+                className={`sw-finding-nav ${f.id === findingId ? "active" : ""}`}
+                onClick={() => selectFinding(f)}
+              >
+                <span className={`sw-severity-dot ${f.severity}`} />
+                <span>
+                  {f.title}
+                  <small>{label(f.status)}</small>
+                </span>
+              </button>
+            ))}
+          </div>
           {!findings.length && (
             <p className="sw-muted">
               No actionable finding returned. This is not a guarantee that the
