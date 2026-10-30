@@ -96,9 +96,13 @@ def identity(request: Request, *, write=False, owner=False, allow_viewer=False):
         if not session or session.expires < time.time():
             raise HTTPException(401, "Sign in to your agency workspace.")
         if session.access_id == "owner":
-            if session.workspace_id != digest(os.getenv("STACKWISE_ADMIN_TOKEN", "")):
-                raise HTTPException(401, "Your agency access key changed. Sign in again.")
-            workspace_id = None
+            if session.workspace_id == digest(os.getenv("STACKWISE_ADMIN_TOKEN", "")):
+                workspace_id = None
+            else:
+                ws = db.get(Workspace, session.workspace_id) if session.workspace_id else None
+                if not ws or ws.owner_id not in ("owner", None):
+                    raise HTTPException(401, "Your agency access key changed. Sign in again.")
+                workspace_id = session.workspace_id
         elif session.access_id.startswith("github:"):
             workspace_id = session.workspace_id
         else:

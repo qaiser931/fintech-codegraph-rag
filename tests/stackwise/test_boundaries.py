@@ -15,9 +15,9 @@ from src.stackwise import analysis, service
 from src.stackwise.application import app
 from src.stackwise.demo import FILES, SHA, demo_data
 from src.stackwise.github import GitHub, IntegrationError, accepted, read_archive
-from src.stackwise.security import digest, redact, repository_name, safe_path, seal
+from src.stackwise.security import COOKIE, digest, redact, repository_name, safe_path, seal
 from src.stackwise.store import (AccessKey, Finding, Job, Report, Repository, Review,
-                                 Workspace, database)
+                                 Session, Workspace, database)
 
 ORIGIN = "http://testserver"
 ADMIN = "test-owner-key-with-at-least-32-characters"
@@ -602,3 +602,88 @@ def test_multiple_independent_github_users_workspace_isolation(client, monkeypat
     assert len(alice2_portfolio["repositories"]) == 1
     assert len(alice2_portfolio["reviews"]) == 1
     assert len(alice2_portfolio["findings"]) == 1
+
+
+def test_owner_session_with_agency_workspace(client):
+    with database()() as db:
+        ws = Workspace(name="Agency Work", owner_id="owner")
+        db.add(ws)
+        db.flush()
+        token = "owner-test-token-agency"
+        db.add(Session(
+            id=digest(token),
+            access_id="owner",
+            workspace_id=ws.id,
+            role="owner",
+            name="Admin User",
+            csrf="test-csrf",
+            expires=time.time() + 3600,
+        ))
+        db.commit()
+        ws_id = ws.id
+    client.cookies.set(COOKIE, token)
+    res = client.get("/api/session")
+    assert res.status_code == 200
+    user = res.json()["user"]
+    assert user is not None
+    assert user["name"] == "Admin User"
+    assert user["workspace_id"] == ws_id
+    assert user["role"] == "owner"
+
+
+def test_owner_access_key_session_env_change(client, monkeypatch):
+    token = "owner-test-token-key"
+    with database()() as db:
+        db.add(Session(
+            id=digest(token),
+            access_id="owner",
+            workspace_id=digest(ADMIN),
+            role="owner",
+            name="Agency Owner",
+            csrf="test-csrf",
+            expires=time.time() + 3600,
+        ))
+        db.commit()
+    client.cookies.set(COOKIE, token)
+    res = client.get("/api/session")
+    assert res.status_code == 200
+    user = res.json()["user"]
+    assert user is not None
+    assert user["workspace_id"] is None
+    # Change admin token env value -> must return user null
+    monkeypatch.setenv("STACKWISE_ADMIN_TOKEN", "different-token-with-at-least-32-chars")
+    res2 = client.get("/api/session")
+    assert res2.status_code == 200
+    assert res2.json()["user"] is None
+
+
+def test_owner_session_with_foreign_or_missing_workspace(client):
+    token_foreign = "owner-token-foreign"
+    token_missing = "owner-token-missing"
+    with database()() as db:
+        ws_foreign = Workspace(name="Client Space", owner_id="github:someone")
+        db.add(ws_foreign)
+        db.flush()
+        db.add(Session(
+            id=digest(token_foreign),
+            access_id="owner",
+            workspace_id=ws_foreign.id,
+            role="owner",
+            name="Attacker",
+            csrf="test-csrf",
+            expires=time.time() + 3600,
+        ))
+        db.add(Session(
+            id=digest(token_missing),
+            access_id="owner",
+            workspace_id="non-existent-workspace-id",
+            role="owner",
+            name="Orphan",
+            csrf="test-csrf",
+            expires=time.time() + 3600,
+        ))
+        db.commit()
+    client.cookies.set(COOKIE, token_foreign)
+    assert client.get("/api/session").json()["user"] is None
+    client.cookies.set(COOKIE, token_missing)
+    assert client.get("/api/session").json()["user"] is None
