@@ -15,7 +15,7 @@ from cryptography.fernet import Fernet
 from fastapi import HTTPException, Request
 from sqlalchemy import select
 
-from .store import AccessKey, Session, database
+from .store import AccessKey, Session, Workspace, database
 
 COOKIE = "sw_session"
 OAUTH_COOKIE = "sw_oauth_state"
@@ -118,9 +118,38 @@ def identity(request: Request, *, write=False, owner=False, allow_viewer=False):
     return result
 
 
-def workspace_access(user, workspace_id):
-    if user.role != "owner" and user.workspace_id != workspace_id:
+def workspace_access(user, workspace_id, db=None):
+    if not workspace_id:
         raise HTTPException(404, "Workspace not found.")
+
+    if user.workspace_id == workspace_id:
+        return True
+    if user.access_id == "owner":
+        def check_agency(session_db):
+            ws = session_db.get(Workspace, workspace_id)
+            return ws and (ws.owner_id in ("owner", None))
+        if db is not None:
+            if check_agency(db):
+                return True
+        else:
+            with database()() as session_db:
+                if check_agency(session_db):
+                    return True
+    elif user.access_id.startswith("github:"):
+        def check_user(session_db):
+            ws = session_db.get(Workspace, workspace_id)
+            return ws and (ws.owner_id == user.access_id or ws.id == user.workspace_id)
+        if db is not None:
+            if check_user(db):
+                return True
+        else:
+            with database()() as session_db:
+                if check_user(session_db):
+                    return True
+    raise HTTPException(404, "Workspace not found.")
+
+
+
 
 
 def webhook_valid(body, signature, secret):

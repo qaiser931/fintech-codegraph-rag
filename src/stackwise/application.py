@@ -23,7 +23,7 @@ from .security import (COOKIE, OAUTH_COOKIE, check_origin, digest, identity,
                        workspace_access)
 from .service import create_job, enqueue, job_view, process_job, report_for
 from .store import (AccessKey, Attempt, Audit, Finding, Job, Report, Repository,
-                    Review, Session, Workspace, database, scoped, uid)
+                    Review, Session, Workspace, accessible_workspaces_query, database, scoped, uid)
 
 app = FastAPI(title="Stackwise", docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -116,7 +116,7 @@ def owned(db, model, record_id, user):
     record = db.get(model, record_id)
     if not record:
         raise HTTPException(404, "Record not found.")
-    workspace_access(user, record.workspace_id if model != Workspace else record.id)
+    workspace_access(user, record.workspace_id if model != Workspace else record.id, db)
     return record
 
 
@@ -259,37 +259,54 @@ def github_callback(request: Request):
     except Exception:
         return RedirectResponse("/dashboard?auth_error=github_service_error", status_code=302)
 
-    gh_login = user_info.get("login")
+    gh_login = str(user_info.get("login", "")).strip()
     if not gh_login:
         return RedirectResponse("/dashboard?auth_error=invalid_user_data", status_code=302)
 
-    gh_name = user_info.get("name") or gh_login
-    access_id = f"github:{gh_login}"
+    gh_name = str(user_info.get("name") or gh_login).strip()
+    access_id = f"github:{gh_login.lower()}"
 
     admin_users_str = os.getenv("GITHUB_ADMIN_USERS", "")
+    is_admin = False
     if admin_users_str.strip():
         admin_users = [u.strip().lower() for u in admin_users_str.split(",") if u.strip()]
-        role = "owner" if gh_login.lower() in admin_users else "reviewer"
-    else:
-        role = "owner"
+        if gh_login.lower() in admin_users:
+            is_admin = True
 
+    role = "owner"
     now = time.time()
     token = secrets.token_urlsafe(32)
     csrf = secrets.token_urlsafe(32)
 
     with database()() as db:
         db.execute(delete(Session).where(Session.expires < now))
+        if is_admin:
+            access_id = "owner"
+            user_ws = db.scalar(select(Workspace).where((Workspace.owner_id == "owner") | (Workspace.owner_id == None)).order_by(Workspace.created.asc()))
+            if not user_ws:
+                user_ws = Workspace(name=f"{gh_name}'s Workspace", owner_id="owner")
+                db.add(user_ws)
+                db.flush()
+                db.add(Audit(workspace_id=user_ws.id, actor=gh_name, action="workspace_created", subject=user_ws.id))
+        else:
+            user_ws = db.scalar(select(Workspace).where(Workspace.owner_id == access_id).order_by(Workspace.created.asc()))
+            if not user_ws:
+                user_ws = Workspace(name=f"{gh_name}'s Workspace", owner_id=access_id)
+                db.add(user_ws)
+                db.flush()
+                db.add(Audit(workspace_id=user_ws.id, actor=gh_name, action="workspace_created", subject=user_ws.id))
+
         db.add(Session(
             id=digest(token),
             access_id=access_id,
-            workspace_id=None,
+            workspace_id=user_ws.id,
             role=role,
             name=gh_name,
             csrf=csrf,
             expires=now + 8 * 3600,
         ))
         db.add(Audit(
-            workspace_id=None,
+            workspace_id=user_ws.id,
             actor=gh_name,
             action="signed_in_github",
             subject=access_id,
@@ -357,7 +374,7 @@ def logout(request: Request):
 def portfolio(request: Request):
     user = identity(request)
     with database()() as db:
-        workspaces = select(Workspace) if user.role == "owner" else select(Workspace).where(Workspace.id == user.workspace_id)
+        workspaces = accessible_workspaces_query(user)
         def rows(model, limit=300):
             query = scoped(db.query(model), model, user)
             if hasattr(model, "created"):
@@ -379,9 +396,10 @@ def portfolio(request: Request):
 def add_workspace(body: WorkspaceInput, request: Request):
     user = identity(request, write=True, owner=True)
     with database()() as db:
-        if db.scalar(select(func.count()).select_from(Workspace)) >= 20:
+        user_ws_count = db.scalar(select(func.count()).select_from(Workspace).where(Workspace.owner_id == user.access_id))
+        if user_ws_count >= 20:
             raise HTTPException(409, "The first version supports 20 client workspaces.")
-        row = Workspace(name=body.name.strip())
+        row = Workspace(name=body.name.strip(), owner_id=user.access_id)
         if len(row.name) < 2:
             raise HTTPException(422, "Enter a workspace name.")
         db.add(row)
@@ -428,7 +446,8 @@ def add_access(workspace_id: str, body: AccessInput, request: Request):
 def access_list(request: Request):
     user = identity(request, owner=True)
     with database()() as db:
-        return {"keys": [view(k, "id workspace_id name role revoked created") for k in db.scalars(select(AccessKey))]}
+        ws_ids = [w.id for w in db.scalars(accessible_workspaces_query(user))]
+        return {"keys": [view(k, "id workspace_id name role revoked created") for k in db.scalars(select(AccessKey).where(AccessKey.workspace_id.in_(ws_ids)))]}
 
 
 @app.post("/api/access/{key_id}/revoke")

@@ -18,6 +18,7 @@ import {
   Copy,
   Download,
   ExternalLink,
+  Info,
   FileCode2,
   FileText,
   GitBranch,
@@ -77,11 +78,11 @@ const relative = (t?: number | null) =>
   !t
     ? "Not yet"
     : new Intl.DateTimeFormat("en", {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(t * 1000)
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(t * 1000)
 const label = (s?: string) => (s || "not available").replaceAll("_", " ")
 const severityRank: Record<string, number> = {
   high: 0,
@@ -145,6 +146,7 @@ function Empty({
     </div>
   )
 }
+
 function Panel({
   title,
   hint,
@@ -172,47 +174,75 @@ function Panel({
   )
 }
 
-function Dialog({
-  title,
-  children,
-  close,
-}: {
-  title: string
-  children: React.ReactNode
-  close: () => void
-}) {
-  const ref = useRef<HTMLDivElement>(null)
+function useDialogFocus(
+  ref: React.RefObject<HTMLDivElement | null>,
+  onClose: () => void
+) {
   useEffect(() => {
-    const old = document.activeElement as HTMLElement | null
-    const root = ref.current!
-    const focusable = () =>
-      Array.from(
-        root.querySelectorAll<HTMLElement>(
-          "button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]"
+    const prevActive = document.activeElement as HTMLElement | null
+    const root = ref.current
+    if (!root) return
+
+    const focusables = root.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    if (focusables.length > 0) {
+      focusables[0].focus()
+    } else {
+      root.focus()
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault()
+        onClose()
+        return
+      }
+
+      if (e.key === "Tab") {
+        const elements = root.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         )
-      )
-    focusable()[0]?.focus()
-    const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close()
-      if (event.key === "Tab") {
-        const elements = focusable(),
-          first = elements[0],
-          last = elements.at(-1)
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault()
-          last?.focus()
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault()
-          first?.focus()
+        if (elements.length === 0) {
+          e.preventDefault()
+          return
+        }
+        const first = elements[0]
+        const last = elements[elements.length - 1]
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault()
+            last.focus()
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault()
+            first.focus()
+          }
         }
       }
     }
-    root.addEventListener("keydown", key)
+
+    document.addEventListener("keydown", handleKeyDown)
     return () => {
-      root.removeEventListener("keydown", key)
-      old?.focus()
+      document.removeEventListener("keydown", handleKeyDown)
+      prevActive?.focus?.()
     }
-  }, [close])
+  }, [ref, onClose])
+}
+
+function Dialog({
+  title,
+  close,
+  children,
+}: {
+  title: string
+  close: () => void
+  children: React.ReactNode
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  useDialogFocus(ref, close)
   return (
     <div className="sw-modal-backdrop">
       <div
@@ -238,6 +268,70 @@ function Dialog({
     </div>
   )
 }
+
+function workspaceSubtitle(id: string) {
+  if (id === "demo-alpha") return "Client Alpha · Fintech Retainer (Active PR review & TLS finding)"
+  if (id === "demo-beta") return "Client Beta · E-commerce Retainer (Isolated web app, zero shared state)"
+  if (id === "demo-internal") return "Internal tools · Agency Infrastructure (Studio CLI)"
+  return ""
+}
+
+const DEMO_DEVELOPER_ACTIVITY = [
+  {
+    name: "Alex Rivera",
+    role: "Senior Full-Stack Engineer",
+    avatar: "green",
+    prsOpened: 14,
+    prsMerged: 12,
+    lastMerged: "PR #128 Add client account endpoint",
+    lastMergedDate: "Yesterday",
+    workspace: "Client Alpha",
+  },
+  {
+    name: "Sarah Chen",
+    role: "Staff Infrastructure Lead",
+    avatar: "orange",
+    prsOpened: 9,
+    prsMerged: 8,
+    lastMerged: "PR #124 Configure TLS ingress certificate",
+    lastMergedDate: "3 days ago",
+    workspace: "Client Alpha",
+  },
+  {
+    name: "Marcus Vance",
+    role: "Security & Systems Engineer",
+    avatar: "purple",
+    prsOpened: 11,
+    prsMerged: 9,
+    lastMerged: "PR #119 Implement workspace auth boundary checks",
+    lastMergedDate: "5 days ago",
+    workspace: "Client Beta",
+  },
+]
+
+const DEMO_REPOSITORY_ISSUES = [
+  {
+    number: 42,
+    title: "Account ownership check missing on account route",
+    severity: "high" as const,
+    file: "auth/routes.py:7-9",
+    analysis: "Unauthenticated client identifier query param allows horizontal privilege escalation without user context binding.",
+  },
+  {
+    number: 45,
+    title: "TLS certificate verification disabled in payment client",
+    severity: "high" as const,
+    file: "auth/routes.py:11-17",
+    analysis: "Outgoing payment gateway HTTP request bypasses SSL verification, exposing internal traffic to man-in-the-middle risks.",
+  },
+  {
+    number: 48,
+    title: "Stale session tokens lack idle timeout revocation",
+    severity: "medium" as const,
+    file: "auth/session.py:22-26",
+    analysis: "Bearer sessions persist indefinitely without active heartbeat invalidation or workspace lease renewal.",
+  },
+]
 
 export default function StackwiseApp() {
   const contextVersion = useRef(0)
@@ -297,34 +391,112 @@ export default function StackwiseApp() {
     citations: Evidence[]
   } | null>(null)
   const [loginKey, setLoginKey] = useState("")
+  const [tourStep, setTourStep] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (mode === "demo" && tourStep === null && typeof window !== "undefined") {
+      const isTest = typeof process !== "undefined" && process.env?.NODE_ENV === "test"
+      if (!isTest && !sessionStorage.getItem("sw_demo_tour_seen")) {
+        setTourStep(0)
+        sessionStorage.setItem("sw_demo_tour_seen", "1")
+      }
+    }
+  }, [mode, tourStep])
+
+  const tourSteps = [
+    {
+      step: 1,
+      tag: "Agency overview",
+      title: "Welcome to Acme Studio",
+      body: "Acme Studio is a sample engineering agency managing multiple client retainers. Stackwise keeps every client's codebase, reviews, and secrets completely isolated.",
+      hint: "Inspect the agency profile in the sidebar to understand the agency-level view.",
+      actionText: "Next: Client Workspaces",
+      action: () => setTourStep(1),
+    },
+    {
+      step: 2,
+      tag: "Workspace selection",
+      title: "Client Alpha vs. Client Beta",
+      body: "Client Alpha runs an active API service with security findings. Client Beta is an isolated e-commerce workspace. Switching workspaces strictly isolates all code, findings, and metrics.",
+      hint: "Use the workspace filter or click a workspace card to switch contexts.",
+      actionText: "Focus Client Alpha",
+      action: () => {
+        changeWorkspace("demo-alpha")
+        setView("Workspaces")
+      },
+    },
+    {
+      step: 3,
+      tag: "Repository import",
+      title: "Repository Import (Simulated)",
+      body: "In production, you import client repositories with fine-grained GitHub tokens. In this interactive demo, repository connections and indexing are simulated to keep demo sessions safe.",
+      hint: "Open the connect dialog to see the repository configuration form.",
+      actionText: "Preview Connect Dialog",
+      action: () => {
+        setView("Workspaces")
+        openModal("repository")
+      },
+    },
+    {
+      step: 4,
+      tag: "Code review & decision",
+      title: "Human-in-the-Loop Review",
+      body: "Every AI finding is linked to exact source evidence. Inspect pull request #128 on Client Alpha to review the TLS patch preview, then record an approved or changes-requested decision.",
+      hint: "Explore PR #128 in the Code Reviews desk.",
+      actionText: "Open PR #128",
+      action: () => {
+        setView("Code reviews")
+        openReview("demo-review")
+      },
+    },
+  ]
+
   const user = session.user
   const isDemo = mode === "demo",
     owner = user?.role === "owner",
     canWrite = isDemo || (!!user && user.role !== "viewer")
 
   const load = useCallback(async (demo = false) => {
-    const next = await api<Portfolio>(demo ? "demo" : "portfolio")
-    setData(next)
-    setSnapshotTime(Date.now())
-    return next
+    try {
+      const next = await api<Portfolio>(demo ? "demo" : "portfolio")
+      setData(next)
+      setSnapshotTime(Date.now())
+      return next
+    } catch (e) {
+      if (demo) {
+        const demoFixture = await import("@/tests/stackwise-demo.json")
+        const fallback = demoFixture.default as unknown as Portfolio
+        setData(fallback)
+        setSnapshotTime(Date.now())
+        return fallback
+      }
+      throw e
+    }
   }, [])
+
   useEffect(() => {
-    const controller = new AbortController()
     const searchParams = new URLSearchParams(window.location.search)
+    if (searchParams.get("demo") === "1") {
+      void load(true)
+        .then(() => setMode("demo"))
+        .catch(() => setMode("demo"))
+      return
+    }
+
+    const controller = new AbortController()
     api<Session>("session", { signal: controller.signal })
       .then(async (value) => {
         if (controller.signal.aborted) return
         setSession(value)
-        if (searchParams.get("demo") === "1") {
-          await load(true)
-          setMode("demo")
-        } else if (value.user) {
+        if (value.user) {
           if (searchParams.get("signed_in") === "1") {
             window.history.replaceState(null, "", "/dashboard")
           }
           await load()
           setMode("live")
-        } else setMode("login")
+        } else {
+          setMode("login")
+        }
       })
       .catch((e) => {
         if (!controller.signal.aborted) {
@@ -706,13 +878,16 @@ export default function StackwiseApp() {
         <Link href="/" aria-label="Stackwise home">
           <StackwiseBrand />
         </Link>
-        <div className="sw-agency">
+        <div
+          id="sw-tour-agency"
+          className={`sw-agency ${isDemo && tourStep === 0 ? "sw-tour-highlight" : ""}`}
+        >
           <span className="sw-agency-icon">{isDemo ? "A" : "S"}</span>
           <div>
             <strong>{isDemo ? "Acme Studio" : "Agency workspace"}</strong>
-            <small>
+            <small className={isDemo ? "sw-demo-agency-desc" : ""}>
               {isDemo
-                ? "Sample portfolio"
+                ? "Sample agency · 2 client retainers"
                 : user?.role === "owner"
                   ? "Agency owner"
                   : "Client workspace"}
@@ -725,8 +900,9 @@ export default function StackwiseApp() {
           {navigation.map((n) => (
             <button
               key={n.name}
+              id={n.name === "Code reviews" ? "sw-tour-nav-reviews" : undefined}
               onClick={() => navigate(n.name)}
-              className={view === n.name ? "active" : ""}
+              className={`${view === n.name ? "active" : ""} ${isDemo && tourStep === 3 && n.name === "Code reviews" ? "sw-tour-highlight" : ""}`}
               aria-current={view === n.name ? "page" : undefined}
             >
               <n.icon size={17} strokeWidth={1.6} />
@@ -757,7 +933,7 @@ export default function StackwiseApp() {
       </aside>
       <div className="sw-app-main">
         <header className="sw-topbar">
-          <div>
+          <div className="sw-topbar-breadcrumb">
             <button
               className="sw-icon-btn sw-mobile-toggle"
               onClick={() => setMenu(true)}
@@ -765,11 +941,13 @@ export default function StackwiseApp() {
             >
               <Menu size={20} />
             </button>
-            <span>Workspace</span>
+            <span className="sw-breadcrumb-agency">{isDemo ? "Acme Studio" : (session.user?.name || "Workspace")}</span>
+            <ChevronRight size={13} className="sw-breadcrumb-sep" />
+            <span className="sw-breadcrumb-workspace">{workspace === "all" ? "All workspaces" : workspaceName(workspace)}</span>
             <ChevronRight size={13} />
-            <strong>{view}</strong>
+            <strong className="sw-breadcrumb-view">{view}</strong>
           </div>
-          <div>
+          <div className="sw-topbar-meta">
             <span className="sw-topbar-status">
               <span className="sw-live-dot" />
               {isDemo ? "Sample mode" : "Connected workspace"}
@@ -788,23 +966,33 @@ export default function StackwiseApp() {
         {isDemo && (
           <div className="sw-demo-bar">
             <span>
-              <Sparkles size={14} /> You’re exploring a sample portfolio. All
+              <Sparkles size={14} /> You’re exploring Acme Studio’s sample portfolio. All
               metrics and findings are illustrative; decisions stay in this
               session.
             </span>
-            <button
-              onClick={() => {
-                setData(EMPTY)
-                setReview(null)
-                setReviewId("")
-                setAnswer(null)
-                setReport(null)
-                setMode("login")
-                window.history.replaceState(null, "", "/dashboard")
-              }}
-            >
-              Connect your repositories <ArrowRight size={13} />
-            </button>
+            <div className="sw-demo-bar-actions">
+              <button
+                type="button"
+                className="sw-tour-launcher-btn"
+                onClick={() => setTourStep(0)}
+              >
+                <Sparkles size={13} /> {tourStep !== null ? "Tour active" : "Take guided tour"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setData(EMPTY)
+                  setReview(null)
+                  setReviewId("")
+                  setAnswer(null)
+                  setReport(null)
+                  setMode("login")
+                  window.history.replaceState(null, "", "/dashboard")
+                }}
+              >
+                Connect your repositories <ArrowRight size={13} />
+              </button>
+            </div>
           </div>
         )}
         <main id="workspace-main" className="sw-workspace-main">
@@ -912,7 +1100,10 @@ export default function StackwiseApp() {
             </div>
           )}
           {view !== "Settings" && !reviewId && (
-            <div className="sw-filter-row">
+            <div
+              id="sw-tour-workspace-filter"
+              className={`sw-filter-row ${isDemo && tourStep === 1 ? "sw-tour-highlight" : ""}`}
+            >
               <div className="sw-select-wrap">
                 <Layers3 size={14} />
                 <select
@@ -924,6 +1115,13 @@ export default function StackwiseApp() {
                   {data.workspaces.map((w) => (
                     <option key={w.id} value={w.id}>
                       {w.name}
+                      {isDemo && w.id === "demo-alpha"
+                        ? " — Active Client Retainer"
+                        : isDemo && w.id === "demo-beta"
+                          ? " — Isolated Client Retainer"
+                          : isDemo && w.id === "demo-internal"
+                            ? " — Agency Internal"
+                            : ""}
                     </option>
                   ))}
                 </select>
@@ -1057,24 +1255,24 @@ export default function StackwiseApp() {
                               )
                               .map((item) => item.review_id)
                           ).size > 1 && (
-                            <small>
-                              Seen across{" "}
-                              {
-                                new Set(
-                                  data.findings
-                                    .filter(
-                                      (item) =>
-                                        item.title === f.title &&
-                                        item.evidence.path ===
+                              <small>
+                                Seen across{" "}
+                                {
+                                  new Set(
+                                    data.findings
+                                      .filter(
+                                        (item) =>
+                                          item.title === f.title &&
+                                          item.evidence.path ===
                                           f.evidence.path &&
-                                        item.workspace_id === f.workspace_id
-                                    )
-                                    .map((item) => item.review_id)
-                                ).size
-                              }{" "}
-                              reviews
-                            </small>
-                          )}
+                                          item.workspace_id === f.workspace_id
+                                      )
+                                      .map((item) => item.review_id)
+                                  ).size
+                                }{" "}
+                                reviews
+                              </small>
+                            )}
                           <span>
                             Inspect evidence <ArrowUpRight size={12} />
                           </span>
@@ -1103,7 +1301,7 @@ export default function StackwiseApp() {
                 }
               >
                 <div className="sw-table-scroll">
-                  <table className="sw-table">
+                  <table className="sw-table sw-table-cards">
                     <thead>
                       <tr>
                         <th>WORKSPACE</th>
@@ -1119,8 +1317,8 @@ export default function StackwiseApp() {
                     <tbody>
                       {selectedWorkspaces.map((w) => {
                         const rs = data.repositories.filter(
-                            (r) => r.workspace_id === w.id
-                          ),
+                          (r) => r.workspace_id === w.id
+                        ),
                           fs = data.findings.filter(
                             (f) =>
                               f.workspace_id === w.id && f.status === "open"
@@ -1130,7 +1328,7 @@ export default function StackwiseApp() {
                           )
                         return (
                           <tr key={w.id}>
-                            <td>
+                            <td data-label="Workspace">
                               <div className="sw-cell-name">
                                 <span
                                   className={`sw-avatar sw-avatar-${w.color}`}
@@ -1139,24 +1337,28 @@ export default function StackwiseApp() {
                                 </span>
                                 <div>
                                   <strong>{w.name}</strong>
-                                  <small>Client workspace</small>
+                                  <small>
+                                    {isDemo && workspaceSubtitle(w.id)
+                                      ? workspaceSubtitle(w.id).split("·")[0].trim()
+                                      : "Client workspace"}
+                                  </small>
                                 </div>
                               </div>
                             </td>
-                            <td>
+                            <td data-label="Repositories">
                               {rs.length}
                               <small className="sw-muted"> repositories</small>
                             </td>
-                            <td>
+                            <td data-label="Open risks">
                               {fs.length}
                               <small className="sw-muted"> open</small>
                             </td>
-                            <td>
+                            <td data-label="Last review">
                               {isDemo && last
                                 ? "Sample review"
                                 : relative(last?.created)}
                             </td>
-                            <td>
+                            <td data-label="Status">
                               <Badge
                                 tone={
                                   fs.length
@@ -1173,7 +1375,7 @@ export default function StackwiseApp() {
                                     : "No open findings"}
                               </Badge>
                             </td>
-                            <td>
+                            <td data-label="Open workspace">
                               <button
                                 className="sw-icon-btn"
                                 aria-label={`Open ${w.name}`}
@@ -1210,6 +1412,73 @@ export default function StackwiseApp() {
                   )}
                 </div>
               </Panel>
+              {isDemo && (
+                <Panel
+                  title="Developer activity"
+                  hint="Team throughput and recent PR merges across connected portfolio workspaces"
+                  action={<Badge tone="neutral">Sample data</Badge>}
+                >
+                  <div className="sw-developer-list">
+                    {DEMO_DEVELOPER_ACTIVITY.map((dev) => (
+                      <div className="sw-settings-row" key={dev.name}>
+                        <div className="sw-cell-name">
+                          <span
+                            className={`sw-avatar sw-avatar-${dev.avatar}`}
+                            aria-hidden="true"
+                          >
+                            {dev.name.slice(0, 1)}
+                          </span>
+                          <div>
+                            <strong>{dev.name}</strong>
+                            <p>
+                              {dev.role} ·{" "}
+                              <span className="sw-muted">{dev.workspace}</span>
+                            </p>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <p style={{ margin: 0, fontWeight: 600 }}>
+                            {dev.prsOpened} opened · {dev.prsMerged} merged
+                          </p>
+                          <small className="sw-muted" style={{ fontSize: "10px", display: "block", marginTop: "3px" }}>
+                            Last merge: {dev.lastMerged} ({dev.lastMergedDate})
+                          </small>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Panel>
+              )}
+              {isDemo && (
+                <Panel
+                  title="Repository issues"
+                  hint="Known open concerns and risk analysis for client-alpha/api-service"
+                  action={<Badge tone="neutral">Sample data</Badge>}
+                >
+                  <div className="sw-developer-list">
+                    {DEMO_REPOSITORY_ISSUES.map((issue) => (
+                      <div className="sw-settings-row" key={issue.number}>
+                        <div className="sw-cell-name">
+                          <Badge tone={issue.severity}>
+                            {issue.severity.toUpperCase()}
+                          </Badge>
+                          <div>
+                            <strong>
+                              #{issue.number} {issue.title}
+                            </strong>
+                            <p>{issue.analysis}</p>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <code style={{ fontSize: "10px", color: "var(--sw-muted)" }}>
+                            {issue.file}
+                          </code>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Panel>
+              )}
               <div className="sw-bottom-note">
                 <LockKeyhole size={14} /> Code context is retrieved within the
                 selected workspace.
@@ -1231,6 +1500,9 @@ export default function StackwiseApp() {
                       {w.name[0]}
                     </span>
                     <h2>{w.name}</h2>
+                    {isDemo && workspaceSubtitle(w.id) && (
+                      <span className="sw-workspace-subtitle">{workspaceSubtitle(w.id)}</span>
+                    )}
                     <p>
                       {
                         data.repositories.filter((r) => r.workspace_id === w.id)
@@ -1253,10 +1525,10 @@ export default function StackwiseApp() {
                             : "Public repositories"}
                       </Badge>
                       <button
-                        className="sw-text-link"
+                        className="sw-btn sw-btn-outline sw-btn-small"
                         onClick={() => changeWorkspace(w.id)}
                       >
-                        Focus <ArrowRight size={14} />
+                        Focus <ArrowRight size={13} />
                       </button>
                     </div>
                   </article>
@@ -1268,7 +1540,8 @@ export default function StackwiseApp() {
                 action={
                   (owner || isDemo) && (
                     <button
-                      className="sw-btn sw-btn-outline sw-btn-small"
+                      id="sw-tour-repo-connect"
+                      className={`sw-btn sw-btn-outline sw-btn-small ${isDemo && tourStep === 2 ? "sw-tour-highlight" : ""}`}
                       disabled={!data.workspaces.length}
                       onClick={() => openModal("repository")}
                     >
@@ -1469,10 +1742,10 @@ export default function StackwiseApp() {
                       )
                       return current
                         ? {
-                            ...f,
-                            status: current.status,
-                            feedback: current.feedback,
-                          }
+                          ...f,
+                          status: current.status,
+                          feedback: current.feedback,
+                        }
                         : f
                     })}
                     repoName={repoName(review.repo_id)}
@@ -1511,8 +1784,8 @@ export default function StackwiseApp() {
                 <div className="sw-review-list">
                   {reviews.map((r) => {
                     const fs = data.findings.filter(
-                        (f) => f.review_id === r.id
-                      ),
+                      (f) => f.review_id === r.id
+                    ),
                       active = fs.filter((f) => f.status === "open")
                     return (
                       <button key={r.id} onClick={() => openReview(r.id)}>
@@ -2252,6 +2525,113 @@ export default function StackwiseApp() {
           </form>
         </Dialog>
       )}
+      {isDemo && tourStep !== null && (
+        <div
+          className={`sw-tour-card ${modal ? "sw-tour-card-dialog-active" : ""}`}
+          role="dialog"
+          aria-label="Interactive Demo Tour"
+        >
+          <div className="sw-tour-progress" aria-hidden="true">
+            {tourSteps.map((_, idx) => (
+              <div
+                key={idx}
+                className={`sw-tour-progress-bar ${idx <= tourStep ? "active" : ""}`}
+              />
+            ))}
+          </div>
+          <div className="sw-tour-header">
+            <div className="sw-tour-badge">
+              <Sparkles size={12} />
+              <span>
+                GUIDED TOUR · STEP {tourStep + 1} OF {tourSteps.length}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="sw-tour-close"
+              onClick={() => {
+                if (modal) closeModal()
+                setTourStep(null)
+              }}
+              aria-label="Close tour"
+            >
+              <X size={15} />
+            </button>
+          </div>
+          <div className="sw-tour-body">
+            <h3>{tourSteps[tourStep].title}</h3>
+            <p>{tourSteps[tourStep].body}</p>
+            {tourSteps[tourStep].hint && (
+              <div className="sw-tour-hint">
+                <Info size={13} />
+                <span>{tourSteps[tourStep].hint}</span>
+              </div>
+            )}
+            {tourSteps[tourStep].actionText && (
+              <button
+                type="button"
+                className="sw-btn sw-btn-outline sw-btn-small sw-tour-action-btn"
+                onClick={() => {
+                  tourSteps[tourStep].action?.()
+                }}
+              >
+                {tourSteps[tourStep].actionText} <ArrowRight size={13} />
+              </button>
+            )}
+          </div>
+          <div className="sw-tour-footer">
+            <button
+              type="button"
+              className="sw-tour-skip"
+              onClick={() => {
+                if (modal) closeModal()
+                setTourStep(null)
+              }}
+            >
+              Skip tour
+            </button>
+            <div className="sw-tour-nav-buttons">
+              <button
+                type="button"
+                className="sw-btn sw-btn-outline sw-btn-small"
+                disabled={tourStep === 0}
+                onClick={() => {
+                  if (modal) closeModal()
+                  setTourStep((s) => Math.max(0, (s || 0) - 1))
+                }}
+              >
+                <ArrowLeft size={13} /> Back
+              </button>
+              {tourStep < tourSteps.length - 1 ? (
+                <button
+                  type="button"
+                  className="sw-btn sw-btn-green sw-btn-small"
+                  onClick={() => {
+                    const next = tourStep + 1
+                    if (modal) closeModal()
+                    setTourStep(next)
+                    if (next === 1 || next === 2) setView("Workspaces")
+                    if (next === 3) setView("Code reviews")
+                  }}
+                >
+                  Next <ArrowRight size={13} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="sw-btn sw-btn-green sw-btn-small"
+                  onClick={() => {
+                    if (modal) closeModal()
+                    setTourStep(null)
+                  }}
+                >
+                  Finish tour <Check size={13} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -2410,12 +2790,12 @@ function ReviewDesk({
   const text =
     tab === "patch"
       ? finding?.patch ||
-        "No source-validated patch preview is available. Follow the suggested next step and prepare a patch for human review."
+      "No source-validated patch preview is available. Follow the suggested next step and prepare a patch for human review."
       : tab === "diff"
         ? file?.patch ||
-          "GitHub did not provide a textual diff for this file. Source coverage may be incomplete."
+        "GitHub did not provide a textual diff for this file. Source coverage may be incomplete."
         : file?.source ||
-          "This file is removed, unsupported or excluded from the indexed snapshot. No source evidence is inferred."
+        "This file is removed, unsupported or excluded from the indexed snapshot. No source evidence is inferred."
   function selectFinding(f: Finding) {
     setFindingId(f.id)
     setFilePath(f.evidence.path)

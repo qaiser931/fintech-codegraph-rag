@@ -7,7 +7,7 @@ import uuid
 from functools import lru_cache
 
 from sqlalchemy import (JSON, Column, Float, ForeignKey, Integer, String, Text,
-                        UniqueConstraint, create_engine)
+                        UniqueConstraint, create_engine, inspect, select, text)
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import NullPool, StaticPool
 
@@ -20,6 +20,7 @@ def uid():
 
 class Workspace(Base):
     __tablename__ = "sw_workspaces"
+    owner_id = Column(String, nullable=True, index=True)
     id = Column(String, primary_key=True, default=uid)
     name = Column(String(100), nullable=False)
     color = Column(String, default="teal")
@@ -168,9 +169,42 @@ def database():
                if local else {"poolclass": NullPool, "connect_args": {"connect_timeout": 8}})
     engine = create_engine(url, **options)
     Base.metadata.create_all(engine)
+    try:
+        inspector = inspect(engine)
+        if "sw_workspaces" in inspector.get_table_names():
+            columns = [c["name"] for c in inspector.get_columns("sw_workspaces")]
+            if "owner_id" not in columns:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE sw_workspaces ADD COLUMN owner_id VARCHAR"))
+    except Exception:
+        pass
     return sessionmaker(bind=engine, expire_on_commit=False)
+
+
+def accessible_workspaces_query(identity):
+    if identity.access_id == "owner":
+        return select(Workspace).where((Workspace.owner_id == "owner") | (Workspace.owner_id == None))
+    elif identity.access_id.startswith("github:"):
+        return select(Workspace).where((Workspace.owner_id == identity.access_id) | (Workspace.id == identity.workspace_id))
+    else:
+        return select(Workspace).where(Workspace.id == identity.workspace_id)
 
 
 def scoped(query, model, identity):
     """Every collection lookup goes through the same authorization predicate."""
-    return query if identity.role == "owner" else query.filter(model.workspace_id == identity.workspace_id)
+    if identity.access_id == "owner":
+        ws_subquery = select(Workspace.id).where((Workspace.owner_id == "owner") | (Workspace.owner_id == None))
+        if hasattr(model, "workspace_id"):
+            if getattr(model, "__name__", "") == "Audit":
+                return query.filter((model.workspace_id.in_(ws_subquery)) | (model.workspace_id == None))
+            return query.filter(model.workspace_id.in_(ws_subquery))
+        return query
+    elif identity.access_id.startswith("github:"):
+        ws_subquery = select(Workspace.id).where((Workspace.owner_id == identity.access_id) | (Workspace.id == identity.workspace_id))
+        if hasattr(model, "workspace_id"):
+            return query.filter(model.workspace_id.in_(ws_subquery))
+        return query
+    else:
+        if hasattr(model, "workspace_id"):
+            return query.filter(model.workspace_id == identity.workspace_id)
+        return query

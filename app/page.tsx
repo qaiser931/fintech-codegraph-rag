@@ -52,7 +52,7 @@ export default function HomePage() {
           <a href="#workflow">How it works</a>
           <a href="#principles">Our approach</a>
         </nav>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <div className="sw-site-nav-actions">
           <a
             className="sw-btn sw-btn-github sw-btn-small"
             href="/api/auth/github"
@@ -98,8 +98,12 @@ export default function HomePage() {
               <Link className="sw-btn sw-btn-green" href="/dashboard">
                 Open your workspace <ArrowRight size={17} />
               </Link>
-              <Link className="sw-text-link" href="/dashboard?demo=1">
-                Explore the demo <ArrowUpRight size={16} />
+              <Link
+                className="sw-btn sw-btn-outline sw-btn-demo"
+                href="/dashboard?demo=1"
+                aria-label="Explore the demo"
+              >
+                Explore the interactive demo <ArrowUpRight size={16} />
               </Link>
             </div>
             <div className="sw-hero-note">
@@ -585,23 +589,20 @@ export default function HomePage() {
             <a
               className="sw-btn sw-btn-dark sw-btn-github"
               href="/api/auth/github"
-              style={{ padding: "14px 24px", fontSize: "13px" }}
             >
               <GitHubIcon size={18} /> Continue with GitHub
             </a>
             <Link
               className="sw-btn sw-btn-green"
               href="/dashboard"
-              style={{ padding: "14px 24px", fontSize: "13px" }}
             >
               Launch live workspace <ArrowRight size={16} />
             </Link>
             <Link
-              className="sw-btn sw-btn-outline"
+              className="sw-btn sw-btn-outline sw-btn-demo"
               href="/dashboard?demo=1"
-              style={{ padding: "14px 24px", fontSize: "13px" }}
             >
-              Try interactive demo <ArrowUpRight size={16} />
+              Explore the interactive demo <ArrowUpRight size={16} />
             </Link>
           </div>
         </section>

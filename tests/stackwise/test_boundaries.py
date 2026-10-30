@@ -24,7 +24,7 @@ ADMIN = "test-owner-key-with-at-least-32-characters"
 
 
 @pytest.fixture
-def client(monkeypatch, tmp_path):
+def client(monkeypatch):
     monkeypatch.setenv("STACKWISE_LOCAL", "1")
     monkeypatch.setenv("STACKWISE_APP_URL", ORIGIN)
     monkeypatch.setenv("DATABASE_URL", "sqlite://")
@@ -490,3 +490,115 @@ def test_github_oauth_flow_and_session(client, monkeypatch):
     assert logout_res.status_code == 200
     assert client.get("/api/session").json()["user"] is None
 
+
+
+def test_multiple_independent_github_users_workspace_isolation(client, monkeypatch):
+    monkeypatch.setenv("GITHUB_CLIENT_ID", "gh-client-123")
+    monkeypatch.setenv("GITHUB_CLIENT_SECRET", "gh-secret-456")
+
+    class MultiUserMockTransport(httpx.BaseTransport):
+        def handle_request(self, req: httpx.Request) -> httpx.Response:
+            url = str(req.url)
+            if "login/oauth/access_token" in url:
+                code = req.read().decode()
+                token = "gho_alice_token" if "code=alice_code" in code else "gho_bob_token"
+                return httpx.Response(200, json={"access_token": token})
+            if "api.github.com/user" in url:
+                auth = req.headers.get("Authorization", "")
+                if "gho_alice_token" in auth:
+                    return httpx.Response(200, json={"id": 1001, "login": "alice", "name": "Alice Smith"})
+                elif "gho_bob_token" in auth:
+                    return httpx.Response(200, json={"id": 1002, "login": "bob", "name": "Bob Jones"})
+            return httpx.Response(404)
+
+    real_client = httpx.Client
+    monkeypatch.setattr(httpx, "Client", lambda *a, **kw: real_client(transport=MultiUserMockTransport()))
+
+    # 1. Alice logs in
+    init_alice = client.get("/api/auth/github", follow_redirects=False)
+    state_alice = init_alice.cookies.get("sw_oauth_state")
+    client.cookies.set("sw_oauth_state", state_alice)
+    cb_alice = client.get(f"/api/auth/github/callback?code=alice_code&state={state_alice}", follow_redirects=False)
+    assert cb_alice.status_code == 302
+    alice_session = client.get("/api/session").json()["user"]
+    assert alice_session["name"] == "Alice Smith"
+    assert alice_session["auth_method"] == "github"
+    assert alice_session["role"] == "owner"
+    ws_alice = alice_session["workspace_id"]
+    assert ws_alice
+
+    # Verify Alice's workspace is returned in portfolio
+    client.headers.update({"Origin": ORIGIN, "X-CSRF-Token": alice_session["csrf"]})
+    alice_portfolio = client.get("/api/portfolio").json()
+    assert [w["id"] for w in alice_portfolio["workspaces"]] == [ws_alice]
+    assert alice_portfolio["workspaces"][0]["name"] == "Alice Smith's Workspace"
+
+    # Seed Alice's workspace with records
+    repo_a, review_a, finding_a, report_a, job_a = seed(ws_alice)
+    alice_portfolio = client.get("/api/portfolio").json()
+    assert len(alice_portfolio["repositories"]) == 1
+    assert len(alice_portfolio["reviews"]) == 1
+    assert len(alice_portfolio["findings"]) == 1
+    assert len(alice_portfolio["reports"]) == 1
+    assert len(alice_portfolio["jobs"]) == 1
+
+    # Alice logs out
+    client.post("/api/logout")
+    assert client.get("/api/session").json()["user"] is None
+
+    # 2. Bob logs in
+    init_bob = client.get("/api/auth/github", follow_redirects=False)
+    state_bob = init_bob.cookies.get("sw_oauth_state")
+    client.cookies.set("sw_oauth_state", state_bob)
+    cb_bob = client.get(f"/api/auth/github/callback?code=bob_code&state={state_bob}", follow_redirects=False)
+    assert cb_bob.status_code == 302
+    bob_session = client.get("/api/session").json()["user"]
+    assert bob_session["name"] == "Bob Jones"
+    assert bob_session["role"] == "owner"
+    ws_bob = bob_session["workspace_id"]
+    assert ws_bob
+    assert ws_bob != ws_alice
+
+    # Bob's portfolio must be isolated: only ws_bob, and NONE of Alice's data!
+    client.headers.update({"Origin": ORIGIN, "X-CSRF-Token": bob_session["csrf"]})
+    bob_portfolio = client.get("/api/portfolio").json()
+    assert [w["id"] for w in bob_portfolio["workspaces"]] == [ws_bob]
+    assert bob_portfolio["workspaces"][0]["name"] == "Bob Jones's Workspace"
+    assert bob_portfolio["repositories"] == []
+    assert bob_portfolio["reviews"] == []
+    assert bob_portfolio["findings"] == []
+    assert bob_portfolio["reports"] == []
+    assert bob_portfolio["jobs"] == []
+
+    # 3. Bob attempts cross-user access to Alice's resources: every single one must 404
+    assert client.get(f"/api/reviews/{review_a}").status_code == 404
+    assert client.get(f"/api/reports/{report_a}").status_code == 404
+    assert client.get(f"/api/findings/{finding_a}/patch").status_code == 404
+    assert client.get(f"/api/jobs/{job_a}").status_code == 404
+    assert client.post(f"/api/findings/{finding_a}", json={"status": "resolved"}).status_code == 404
+    assert client.post(f"/api/reviews/{review_a}/decision", json={"status": "approved"}).status_code == 404
+    assert client.post(f"/api/repositories/{repo_a}/ask", json={"question": "What is here?"}).status_code == 404
+    assert client.post(f"/api/repositories/{repo_a}/index").status_code == 404
+    assert client.post(f"/api/repositories/{repo_a}/reviews", json={"number": 128}).status_code == 404
+    assert client.post(f"/api/workspaces/{ws_alice}/connection", json={}).status_code == 404
+    assert client.post(f"/api/workspaces/{ws_alice}/access", json={"name": "Attacker", "role": "viewer"}).status_code == 404
+    assert client.post(f"/api/workspaces/{ws_alice}/reports").status_code == 404
+    assert client.post(f"/api/workspaces/{ws_alice}/repositories", json={"repository": "owner/repo"}).status_code == 404
+    assert client.get("/api/access").json()["keys"] == []
+
+    # 4. Bob logs out and Alice logs back in (verifying existing workspace persistence)
+    client.post("/api/logout")
+    init_alice2 = client.get("/api/auth/github", follow_redirects=False)
+    state_alice2 = init_alice2.cookies.get("sw_oauth_state")
+    client.cookies.set("sw_oauth_state", state_alice2)
+    cb_alice2 = client.get(f"/api/auth/github/callback?code=alice_code&state={state_alice2}", follow_redirects=False)
+    assert cb_alice2.status_code == 302
+    alice2_session = client.get("/api/session").json()["user"]
+    assert alice2_session["workspace_id"] == ws_alice
+
+    client.headers.update({"Origin": ORIGIN, "X-CSRF-Token": alice2_session["csrf"]})
+    alice2_portfolio = client.get("/api/portfolio").json()
+    assert [w["id"] for w in alice2_portfolio["workspaces"]] == [ws_alice]
+    assert len(alice2_portfolio["repositories"]) == 1
+    assert len(alice2_portfolio["reviews"]) == 1
+    assert len(alice2_portfolio["findings"]) == 1
